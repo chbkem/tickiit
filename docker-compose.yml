@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    container_name: ticketing-dashboard
+    ports:
+      - "3000:3000"
+      - "5000:5000"
+    env_file:
+      - server/.env
+      - client/.env.local
+    environment:
+      HOST: 0.0.0.0
+    restart: unless-stopped

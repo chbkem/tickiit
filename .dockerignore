@@ -1,0 +1,13 @@
+.git
+**/node_modules
+**/build
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.log
+logs
+.agents
+.claude
+.windsurf
+skills-lock.json
+AI_LAYER_PLAN.md
