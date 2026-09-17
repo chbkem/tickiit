@@ -4,8 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const ticketsRouter = require("./routes/tickets");
-const aiAdminRouter = require("./routes/aiAdmin");
-const ingestionRouter = require("./routes/ingestion");
+const aiTriageRouter = require("./routes/aiTriage");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 const { clerkMiddleware } = require("@clerk/express");
 const logger = require("./lib/logger");
@@ -64,8 +63,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/tickets", ticketsRouter);
-app.use("/api/ai/admin", aiAdminRouter);
-app.use("/api/ai/ingest", ingestionRouter);
+app.use("/api/ai/triage", aiTriageRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
