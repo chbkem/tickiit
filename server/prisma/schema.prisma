@@ -7,94 +7,38 @@ datasource db {
 }
 
 model Ticket {
-  id           String        @id @default(uuid())
-  ticketNumber String     @unique
-  subject      String
-  description  String?
-  status       Status     @default(OPEN)
-  priority     Priority   @default(MEDIUM)
-  type         TicketType @default(TASK)
-  requesterId  String
-  assigneeId   String?
-  orgId        String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  resolvedAt   DateTime?
-  closedAt     DateTime?
-  dueAt        DateTime?
-  source       String
-  comments     Comment[]
+  id             String     @id @default(uuid())
+  ticketNumber   String     @unique
+  subject        String
+  description    String?
+  status         Status     @default(OPEN)
+  priority       Priority   @default(MEDIUM)
+  type           TicketType @default(TASK)
+  requesterId    String
+  requesterName  String?
+  requesterEmail String?
+  requesterKey   String?
+  assigneeId     String?
+  orgId          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  resolvedAt     DateTime?
+  closedAt       DateTime?
+  dueAt          DateTime?
+  source         String
+  comments       Comment[]
+
+  @@index([requesterKey])
+  @@index([orgId, assigneeId, status])
 }
 
 model Comment {
   id        String       @id @default(uuid())
   ticketId  String
-  ticket    Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket    Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   authorId  String
   body      String
-  createdAt DateTime  @default(now())
-}
-
-model IngestionEvent {
-  id               String        @id @default(uuid())
-  channel          String
-  externalId       String
-  orgId            String?
-  requesterRef     String?
-  rawPayload       Json
-  suggestion       Json?
-  status           IngestStatus  @default(PENDING)
-  aiReviewRequired Boolean       @default(false)
-  attempts         Int           @default(0)
-  error            String?
-  ticketId         String?
-  processedAt      DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-
-  @@unique([channel, externalId])
-}
-
-model TicketInsight {
-  id         String     @id @default(uuid())
-  ticketId   String     @unique
-  subject    String?
-  type       TicketType
-  priority   Priority
-  assigneeId String?
-  confidence Json
-  model      String?
-  provider   String?
-  rawOutput  Json
-  toolTrace  Json
-  createdAt  DateTime   @default(now())
-}
-
-model KnowledgeArticle {
-  id        String   @id @default(uuid())
-  orgId     String?
-  title     String
-  body      String
-  tags      String[]
-  source    String
-  embedding Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model AgentMemory {
-  id        String   @id @default(uuid())
-  orgId     String
-  scope     String
-  scopeKey  String
-  factKey   String
-  value     Json
-  confidence Float?
-  embedding Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([orgId, scope, scopeKey, factKey])
+  createdAt DateTime     @default(now())
 }
 
 enum Status {
@@ -117,12 +61,4 @@ enum TicketType {
   BUG
   INCIDENT
   REQUEST
-}
-
-enum IngestStatus {
-  PENDING
-  PROCESSING
-  PROCESSED
-  REVIEW
-  FAILED
 }

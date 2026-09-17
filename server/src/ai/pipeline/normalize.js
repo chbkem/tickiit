@@ -31,16 +31,14 @@ class NormalizeError extends Error {
 }
 
 /**
- * normalize — the worker's untrusted-input gate (build step 6).
+ * normalize — the triage pipeline's untrusted-input gate.
  *
- * Turns the stored `IngestionEvent.rawPayload` into a bounded, sanitized
- * `{ subject, body, requesterRef, orgId, channel }` envelope. It runs inside
- * the worker (not just the HTTP route) so a tampered row is handled the same
- * way as hostile inbound text: every string is passed through sanitizeText and
- * capped. Channel-specific shapes collapse onto a small set of subject/body
- * keys; a raw string payload (some webhooks send text only) is treated as body;
- * when no subject is present the body's first line becomes the subject, and a
- * payload with neither yields a NormalizeError the runner reports as FAILED.
+ * Turns a messy inbound complaint (string or object) into a bounded, sanitized
+ * `{ subject, body, requesterRef, orgId, channel }` envelope. Every string is
+ * passed through sanitizeText and capped. Channel-specific shapes collapse
+ * onto a small set of subject/body keys; a raw string payload is treated as
+ * body; when no subject is present the body's first line becomes the subject,
+ * and a payload with neither yields a NormalizeError the route maps to 400.
  */
 const normalize = (rawPayload, { channel = "UNKNOWN", requesterRef = null, orgId = null } = {}) => {
   const raw = typeof rawPayload === "string" ? { message: rawPayload } : rawPayload;
