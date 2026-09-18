@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://localhost:5000';
+export const API_BASE_URL = 'tickiit-production.up.railway.app';
 
 export const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low' },
