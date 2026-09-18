@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,200..900;1,200..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
 @tailwind base;
@@ -46,9 +46,9 @@
     --sidebar-accent-foreground: 0 0% 20%;
     --sidebar-border: 0 0% 83.1373%;
     --sidebar-ring: 139.6552 52.7273% 43.1373%;
-    --font-sans: Plus Jakarta Sans, sans-serif;
-    --font-serif: Source Serif 4, serif;
-    --font-mono: JetBrains Mono, monospace;
+    --font-sans: "Plus Jakarta Sans", sans-serif;
+    --font-serif: "Source Serif 4", serif;
+    --font-mono: "JetBrains Mono", monospace;
     --radius: 0.5rem;
     --shadow-x: 0;
     --shadow-y: 1px;
@@ -108,7 +108,7 @@
     --sidebar-border: 0 0% 26.6667%;
     --sidebar-ring: 139.6552 52.7273% 43.1373%;
     --font-sans: Plus Jakarta Sans, sans-serif;
-    --font-serif: Source Serif 4, serif;
+    --font-serif: "Source Serif 4", serif;
     --font-mono: JetBrains Mono, monospace;
     --radius: 0.5rem;
     --shadow-x: 0;
