@@ -10,6 +10,7 @@
     "token:generate": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     "test:api": "node scripts/test-ai-triage.js",
     "prisma:generate": "prisma generate",
+    "postinstall": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
