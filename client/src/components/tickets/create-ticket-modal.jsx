@@ -77,7 +77,6 @@ const CreateTicketModal = ({ open, onClose, onTicketCreated }) => {
         <div className="space-y-1.5">
           <Label>Organization (optional)</Label>
           <OrganizationSwitcher
-            hidePersonal
             createOrganizationMode="modal"
             appearance={{
               elements: {

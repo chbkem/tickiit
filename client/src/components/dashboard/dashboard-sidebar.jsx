@@ -50,7 +50,6 @@ const DashboardSidebar = () => {
       {!collapsed && (
         <div className="px-3">
           <OrganizationSwitcher
-            hidePersonal
             createOrganizationMode="modal"
             appearance={{
               elements: {
