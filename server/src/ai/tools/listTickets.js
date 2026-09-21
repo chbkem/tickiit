@@ -1,5 +1,6 @@
 const { z } = require("zod");
 const { tool } = require("ai");
+const { fence } = require("./dataFence");
 const { STATUSES, PRIORITIES, TICKET_TYPES } = require("../../constants/ticket");
 
 const MAX_IDENTIFIER_LENGTH = 200;
@@ -42,13 +43,13 @@ const buildListWhere = ({ args, orgId, requesterId }) => {
 const summarizeTicket = (ticket) => ({
   id: ticket.id,
   ticketNumber: ticket.ticketNumber,
-  subject: ticket.subject,
+  subject: fence(ticket.subject),
   status: ticket.status,
   priority: ticket.priority,
   type: ticket.type,
   requesterId: ticket.requesterId,
-  requesterName: ticket.requesterName,
-  requesterEmail: ticket.requesterEmail,
+  requesterName: fence(ticket.requesterName),
+  requesterEmail: fence(ticket.requesterEmail),
   assigneeId: ticket.assigneeId,
   createdAt: ticket.createdAt,
   updatedAt: ticket.updatedAt,

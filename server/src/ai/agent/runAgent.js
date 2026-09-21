@@ -1,6 +1,24 @@
 const { generateText, Output } = require("ai");
 
 /**
+ * createAbortTimeout — bounds a single provider call. Returns an
+ * AbortController signal plus a clear() that must be run in a finally block.
+ * A caller-supplied timeoutMs wins; otherwise AI_TIMEOUT_MS is honored;
+ * no/bad values mean no timeout (caller opted out). The timer is unref'd so
+ * it never keeps the process alive.
+ */
+const createAbortTimeout = (timeoutMs, env = process.env) => {
+  const ms = timeoutMs !== undefined && timeoutMs !== null ? Number(timeoutMs) : Number(env.AI_TIMEOUT_MS);
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return { signal: undefined, clear: () => {} };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error("AI request timed out")), ms);
+  if (timer.unref) timer.unref();
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
+};
+
+/**
  * mapUsage — normalize a LanguageModelUsage into a plain totals object with
  * safe defaults.
  */
@@ -54,37 +72,49 @@ const normalizeToolLoopResult = (result = {}) => ({
  * output against the zod schema and throws when it does not conform; callers
  * catch and fall back to deterministic defaults.
  */
-const runStructured = async ({ model, instructions, prompt, schema, temperature, maxOutputTokens }) => {
-  const result = await generateText(
-    withDefined({
-      model,
-      instructions,
-      prompt,
-      output: Output.object({ schema }),
-      temperature,
-      maxOutputTokens,
-    }),
-  );
-  return normalizeGenerateResult(result);
+const runStructured = async ({ model, instructions, prompt, schema, temperature, maxOutputTokens, timeoutMs }) => {
+  const { signal, clear } = createAbortTimeout(timeoutMs);
+  try {
+    const result = await generateText(
+      withDefined({
+        model,
+        instructions,
+        prompt,
+        output: Output.object({ schema }),
+        temperature,
+        maxOutputTokens,
+        abortSignal: signal,
+      }),
+    );
+    return normalizeGenerateResult(result);
+  } finally {
+    clear();
+  }
 };
 
 /**
  * runToolLoop — generation with tools for the create agent. The caller
  * supplies stopWhen conditions (hasToolCall/create_ticket, isStepCount).
  */
-const runToolLoop = async ({ model, instructions, prompt, tools, stopWhen, temperature, maxOutputTokens }) => {
-  const result = await generateText(
-    withDefined({
-      model,
-      instructions,
-      prompt,
-      tools,
-      stopWhen,
-      temperature,
-      maxOutputTokens,
-    }),
-  );
-  return normalizeToolLoopResult(result);
+const runToolLoop = async ({ model, instructions, prompt, tools, stopWhen, temperature, maxOutputTokens, timeoutMs }) => {
+  const { signal, clear } = createAbortTimeout(timeoutMs);
+  try {
+    const result = await generateText(
+      withDefined({
+        model,
+        instructions,
+        prompt,
+        tools,
+        stopWhen,
+        temperature,
+        maxOutputTokens,
+        abortSignal: signal,
+      }),
+    );
+    return normalizeToolLoopResult(result);
+  } finally {
+    clear();
+  }
 };
 
 module.exports = {
@@ -92,6 +122,7 @@ module.exports = {
   summarizeToolCalls,
   normalizeGenerateResult,
   normalizeToolLoopResult,
+  createAbortTimeout,
   runStructured,
   runToolLoop,
 };

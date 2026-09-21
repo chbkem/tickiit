@@ -1,5 +1,6 @@
 const { z } = require("zod");
 const { tool } = require("ai");
+const { fence } = require("./dataFence");
 
 const GetTicketInput = z
   .object({
@@ -10,7 +11,7 @@ const GetTicketInput = z
 const summarizeComment = (comment) => ({
   id: comment.id,
   authorId: comment.authorId,
-  body: comment.body,
+  body: fence(comment.body),
   createdAt: comment.createdAt,
 });
 
@@ -18,6 +19,7 @@ const summarizeComment = (comment) => ({
  * get_ticket — read a single ticket (with comments). Scoped to the request's
  * org, or to the requester when no org applies. Inaccessible tickets surface
  * as a tool error the model can react to, never leaking another tenant's rows.
+ * User-authored free text is returned fenced as untrusted data.
  */
 const getTicketTool = ({ ctx }) =>
   tool({
@@ -41,14 +43,14 @@ const getTicketTool = ({ ctx }) =>
       return {
         id: ticket.id,
         ticketNumber: ticket.ticketNumber,
-        subject: ticket.subject,
-        description: ticket.description,
+        subject: fence(ticket.subject),
+        description: fence(ticket.description),
         status: ticket.status,
         priority: ticket.priority,
         type: ticket.type,
         requesterId: ticket.requesterId,
-        requesterName: ticket.requesterName,
-        requesterEmail: ticket.requesterEmail,
+        requesterName: fence(ticket.requesterName),
+        requesterEmail: fence(ticket.requesterEmail),
         assigneeId: ticket.assigneeId,
         createdAt: ticket.createdAt,
         updatedAt: ticket.updatedAt,

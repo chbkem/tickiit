@@ -16,13 +16,19 @@ const optionalCleaned = (max) =>
     z.string().max(max).nullable().optional(),
   );
 
+// Keys that could mutate the prototype chain if copied onto a plain object.
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 const deepClean = (val, depth = 0) => {
   if (typeof val === "string") return sanitizeText(val) ?? "";
   if (Array.isArray(val)) return depth < 8 ? val.map((item) => deepClean(item, depth + 1)) : [];
   if (val != null && typeof val === "object") {
     if (depth >= 8) return {};
     const out = {};
-    for (const [key, item] of Object.entries(val)) out[key] = deepClean(item, depth + 1);
+    for (const [key, item] of Object.entries(val)) {
+      if (FORBIDDEN_KEYS.has(key)) continue;
+      out[key] = deepClean(item, depth + 1);
+    }
     return out;
   }
   return val;

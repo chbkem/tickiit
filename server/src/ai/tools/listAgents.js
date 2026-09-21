@@ -2,6 +2,7 @@ const { z } = require("zod");
 const { tool } = require("ai");
 const { sanitizeText } = require("../../utils/sanitize");
 const { buildName } = require("../identity");
+const { fence } = require("./dataFence");
 
 const MAX_FIELD_LENGTH = 200;
 const DEFAULT_POOL_LIMIT = 100;
@@ -45,7 +46,7 @@ const loadAgentPool = async ({ prisma, clerkClient, orgId, requesterRef }) => {
       const ref = cleanString(membership?.publicUserData?.userId);
       return {
         id: ref,
-        name: cleanString(buildName(membership?.publicUserData?.firstName, membership?.publicUserData?.lastName)),
+        name: fence(cleanString(buildName(membership?.publicUserData?.firstName, membership?.publicUserData?.lastName))),
         role: cleanString(membership?.role),
         openTicketCount: Number(ref != null ? workload.get(ref) ?? 0 : 0),
       };
