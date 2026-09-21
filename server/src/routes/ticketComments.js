@@ -1,8 +1,8 @@
 const express = require("express");
-const rateLimit = require("express-rate-limit");
 const commentsController = require("../controllers/comments");
 const validate = require("../middleware/validate");
 const requireAuth = require("../middleware/requireAuth");
+const { createLimiter } = require("../middleware/rateLimit");
 const {
   ticketIdParamSchema,
   commentParamsSchema,
@@ -12,11 +12,9 @@ const {
 
 const router = express.Router({ mergeParams: true });
 
-const writeLimiter = rateLimit({
+const writeLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 30,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },
 });
 

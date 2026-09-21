@@ -33,6 +33,29 @@ const shouldAutoReply = (autoReply, env = process.env) => {
   return String(env.AI_AUTO_REPLY ?? "").toLowerCase() === "true";
 };
 
+/**
+ * aiEnabled — hard kill-switch for the whole model/egress path. AI_ENABLED
+ * defaults to true; an explicit "false" means no provider call is ever made
+ * and triage degrades to the deterministic pipeline. Operators can flip this
+ * without touching the ingest surface (tickets still get created).
+ */
+const aiEnabled = (env = process.env) => String(env.AI_ENABLED ?? "true").toLowerCase() !== "false";
+
+/**
+ * tokenBudget — per-request model-spend cap in total tokens (input+output,
+ * accumulated across all stages). AI_MAX_TOKENS_PER_REQUEST defaults to
+ * unlimited; when set, any stage whose model call would push usage past the
+ * cap is skipped and the deterministic fallback is used instead. This bounds
+ * both cost and worst-case latency of a single triage request.
+ */
+const tokenBudget = (env = process.env) => {
+  const cap = Number(env.AI_MAX_TOKENS_PER_REQUEST);
+  return Number.isFinite(cap) && cap > 0 ? cap : Number.POSITIVE_INFINITY;
+};
+
+const budgetError = (budget) =>
+  `Token budget exceeded (AI_MAX_TOKENS_PER_REQUEST=${budget}); model stage skipped, deterministic fallback used`;
+
 const enforceCleanDraft = (draft) => {
   const cleanRequired = (value, max, message) => {
     if (typeof value !== "string" || value.trim() === "") throw new Error(message);
@@ -136,25 +159,44 @@ const runTriage = async ({ input, deps = {} }) => {
     clerkClient: deps.clerkClient ?? clerkClient,
     ticketService: deps.ticketService ?? ticketService,
     createTicket: async (draft) => {
-      const ticket = await persistTicket({ draft, ctx });
-      state.ticket = ticket;
-      return ticket;
+      // Exactly-once guard: a hijacked or racing model may emit multiple
+      // create_ticket calls in one step. At most one ticket may be persisted
+      // per triage request; anything after the first is rejected, never
+      // silently creating duplicate tickets.
+      if (state.ticket || state.creating) {
+        throw new Error("create_ticket may only be called once per request; ticket creation already in progress.");
+      }
+      state.creating = persistTicket({ draft, ctx });
+      try {
+        const ticket = await state.creating;
+        state.ticket = ticket;
+        return ticket;
+      } finally {
+        state.creating = null;
+      }
     },
   };
 
   let model = null;
   let modelError = null;
-  try {
-    model = deps.model ?? modelDeps({ env });
-  } catch (error) {
-    modelError = error?.message ?? String(error);
-    log.warn("AI provider unavailable; triage will run deterministic", { errorMessage: modelError });
+  if (aiEnabled(env)) {
+    try {
+      model = deps.model ?? modelDeps({ env });
+    } catch (error) {
+      modelError = error?.message ?? String(error);
+      log.warn("AI provider unavailable; triage will run deterministic", { errorMessage: modelError });
+    }
+  } else {
+    modelError = "AI_ENABLED=false; triage ran fully deterministic";
+    log.warn("AI layer disabled via AI_ENABLED; triage will run deterministic");
   }
 
   const stages = [];
   let usage = { ...ZERO_USAGE };
+  const budget = tokenBudget(env);
 
-  const classified = model
+  const classifyBudgetOk = model && usage.totalTokens <= budget;
+  const classified = classifyBudgetOk
     ? await classifyTriage({ model, normalized, options: deps.stageOptions?.classify })
     : {
         kind: "fallback",
@@ -164,11 +206,13 @@ const runTriage = async ({ input, deps = {} }) => {
         rationale: null,
         usage: { ...ZERO_USAGE },
         stepCount: 0,
+        error: model ? budgetError(budget) : undefined,
       };
   usage = addUsage(usage, classified.usage);
   stages.push({ stage: "classify", kind: classified.kind, usage: classified.usage, stepCount: classified.stepCount, error: classified.error });
 
-  const prioritized = model
+  const prioritizeBudgetOk = model && usage.totalTokens <= budget;
+  const prioritized = prioritizeBudgetOk
     ? await prioritizeTriage({ model, classified, options: deps.stageOptions?.prioritize })
     : {
         kind: "fallback",
@@ -176,6 +220,7 @@ const runTriage = async ({ input, deps = {} }) => {
         rationale: null,
         usage: { ...ZERO_USAGE },
         stepCount: 0,
+        error: model ? budgetError(budget) : undefined,
       };
   usage = addUsage(usage, prioritized.usage);
   stages.push({ stage: "prioritize", kind: prioritized.kind, usage: prioritized.usage, stepCount: prioritized.stepCount, error: prioritized.error });
@@ -187,9 +232,10 @@ const runTriage = async ({ input, deps = {} }) => {
     priority: prioritized.priority,
   };
 
+  const createBudgetOk = model && usage.totalTokens <= budget;
   let createStage = null;
   let ticket = null;
-  if (model) {
+  if (createBudgetOk) {
     createStage = await createTicketAgent({
       model,
       ctx,
@@ -207,7 +253,7 @@ const runTriage = async ({ input, deps = {} }) => {
       usage: { ...ZERO_USAGE },
       stepCount: 0,
       toolCalls: [],
-      error: createStage?.error ?? (model ? null : "AI provider unavailable; created deterministically"),
+      error: createStage?.error ?? (model && !createBudgetOk ? budgetError(budget) : model ? null : "AI provider unavailable; created deterministically"),
     };
     stages.push(fallbackStage);
     ticket = await persistTicket({ draft, ctx });
@@ -235,7 +281,8 @@ const runTriage = async ({ input, deps = {} }) => {
 
   let replyStage = null;
   const replyEnabledFor = shouldAutoReply(input.autoReply, env);
-  if (replyEnabledFor && model) {
+  const replyBudgetOk = replyEnabledFor && model && usage.totalTokens <= budget;
+  if (replyBudgetOk) {
     replyStage = await draftReplyAgent({ model, ctx, ticket, options: deps.stageOptions?.reply });
     const replyLog = {
       ticketId: ticket.id,
@@ -249,6 +296,8 @@ const runTriage = async ({ input, deps = {} }) => {
       log.warn("Triage draft reply failed; returning none", { ...replyLog, error: replyStage.error });
     }
     stages.push({ stage: "reply", kind: replyStage.kind, usage: replyStage.usage, stepCount: replyStage.stepCount, error: replyStage.error });
+  } else if (replyEnabledFor && model) {
+    stages.push({ stage: "reply", kind: "fallback", usage: { ...ZERO_USAGE }, stepCount: 0, error: budgetError(budget) });
   } else if (replyEnabledFor && !model) {
     stages.push({ stage: "reply", kind: "fallback", usage: { ...ZERO_USAGE }, stepCount: 0, error: "AI provider unavailable; no draft reply" });
   }
@@ -263,4 +312,4 @@ const runTriage = async ({ input, deps = {} }) => {
   };
 };
 
-module.exports = { runTriage, shouldAutoReply };
+module.exports = { runTriage, shouldAutoReply, aiEnabled, tokenBudget };

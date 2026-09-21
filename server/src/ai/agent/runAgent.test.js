@@ -5,6 +5,7 @@ const {
   summarizeToolCalls,
   normalizeGenerateResult,
   normalizeToolLoopResult,
+  createAbortTimeout,
 } = require("./runAgent");
 
 describe("runAgent helpers", () => {
@@ -59,5 +60,25 @@ describe("runAgent helpers", () => {
     assert.deepEqual(result.toolCalls, [{ name: "create_ticket", args: { type: "BUG" } }]);
     assert.deepEqual(result.usage, { inputTokens: 3, outputTokens: 2, totalTokens: 5 });
     assert.equal(result.stepCount, 1);
+  });
+
+  test("createAbortTimeout aborts after the configured delay and clears", async () => {
+    const { signal, clear } = createAbortTimeout(10, {});
+    assert.equal(signal.aborted, false);
+    await new Promise((resolve) => {
+      signal.addEventListener("abort", resolve, { once: true });
+      setTimeout(resolve, 50);
+    });
+    assert.equal(signal.aborted, true);
+    clear();
+  });
+
+  test("createAbortTimeout is inactive for bad or missing timeouts", () => {
+    assert.equal(createAbortTimeout(undefined, {}).signal, undefined);
+    assert.equal(createAbortTimeout(0, {}).signal, undefined);
+    assert.equal(createAbortTimeout(-5, {}).signal, undefined);
+    assert.equal(createAbortTimeout("nope", {}).signal, undefined);
+    assert.equal(createAbortTimeout(undefined, { AI_TIMEOUT_MS: "nope" }).signal, undefined);
+    assert.equal(createAbortTimeout(undefined, { AI_TIMEOUT_MS: "25" }).signal.aborted, false);
   });
 });
