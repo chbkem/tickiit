@@ -1,36 +1,21 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useAuth } from '@clerk/react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../components/ui/resizable';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '../components/ui/drawer';
 import TicketList from '../components/tickets/ticket-list';
 import TicketDetails from '../components/tickets/ticket-details';
 import CreateTicketModal from '../components/tickets/create-ticket-modal';
 import useMediaQuery from '../hooks/use-media-query';
-import { getAllTickets } from '../actions/get-all-tickets';
+import { useTickets } from '../hooks/use-tickets';
 import { normalizeValue } from '../components/tickets/ticket-details/utils';
 
 const Tickets = () => {
-  const { getToken } = useAuth();
+  const { tickets, setTickets, loading, error, refetch } = useTickets();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tickets, setTickets] = useState({});
   const [showCreateModal, setShowCreateModal] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
 
   const activeTicketId = searchParams.get('ticketId');
-
-  useEffect(() => {
-    const fetchTickets = async () => {
-      try {
-        const token = await getToken();
-        const data = await getAllTickets(token);
-        setTickets(data);
-      } catch (err) {
-        console.error('Failed to fetch tickets:', err);
-      }
-    };
-    fetchTickets();
-  }, [getToken]);
 
   const handleTicketCreated = useCallback((newTicket) => {
     setTickets((prev) => {
@@ -38,7 +23,7 @@ const Tickets = () => {
       const group = Array.isArray(prev[category]) ? prev[category] : [];
       return { ...prev, [category]: [...group, newTicket] };
     });
-  }, []);
+  }, [setTickets]);
 
   const handleTicketUpdated = useCallback((updatedTicket) => {
     setTickets((prev) => {
@@ -50,7 +35,27 @@ const Tickets = () => {
       next[category] = [...(Array.isArray(next[category]) ? next[category] : []), updatedTicket];
       return next;
     });
-  }, []);
+  }, [setTickets]);
+
+  const handleTicketDeleted = useCallback(
+    (ticketId) => {
+      setTickets((prev) => {
+        const next = {};
+        for (const [key, group] of Object.entries(prev)) {
+          next[key] = Array.isArray(group) ? group.filter((t) => t.id !== ticketId) : group;
+        }
+        return next;
+      });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (next.get('ticketId') === ticketId) {
+          next.delete('ticketId');
+        }
+        return next;
+      });
+    },
+    [setSearchParams, setTickets]
+  );
 
   const handleCloseDetails = useCallback(() => {
     setSearchParams((prev) => {
@@ -86,7 +91,11 @@ const Tickets = () => {
           >
             <TicketList
               tickets={tickets}
+              loading={loading}
+              error={error}
+              onRetry={refetch}
               onOpenCreate={() => setShowCreateModal(true)}
+              onTicketDeleted={handleTicketDeleted}
             />
           </ResizablePanel>
           {activeTicket && (
@@ -102,6 +111,7 @@ const Tickets = () => {
                 <TicketDetails
                   ticket={activeTicket}
                   onTicketUpdated={handleTicketUpdated}
+                  onTicketDeleted={handleTicketDeleted}
                   onClose={handleCloseDetails}
                 />
               </ResizablePanel>
@@ -113,7 +123,11 @@ const Tickets = () => {
       <div className="flex h-full flex-col md:hidden">
         <TicketList
           tickets={tickets}
+          loading={loading}
+          error={error}
+          onRetry={refetch}
           onOpenCreate={() => setShowCreateModal(true)}
+          onTicketDeleted={handleTicketDeleted}
         />
         {isMobile && (
           <Drawer open={!!activeTicket} onOpenChange={(open) => !open && setSearchParams((prev) => {
@@ -128,6 +142,7 @@ const Tickets = () => {
               <TicketDetails
                 ticket={activeTicket}
                 onTicketUpdated={handleTicketUpdated}
+                onTicketDeleted={handleTicketDeleted}
                 onClose={handleCloseDetails}
               />
             </DrawerContent>

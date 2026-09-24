@@ -1,4 +1,4 @@
-import { LuCalendar, LuPencil, LuX } from 'react-icons/lu';
+import { LuCalendar, LuPencil, LuTrash, LuX } from 'react-icons/lu';
 import { Button } from '../../ui';
 import { formatTicketDate } from '../../../lib/format-date';
 
@@ -7,6 +7,8 @@ const Header = ({
   editing,
   isAdmin,
   onToggleEdit,
+  onDelete,
+  isDeleting,
   onClose,
   createdAt,
   creatorName,
@@ -20,15 +22,31 @@ const Header = ({
       </h2>
       <div className="flex shrink-0 items-center gap-1">
         {isAdmin && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 px-2.5"
-            onClick={onToggleEdit}
-          >
-            {editing ? <LuX className="h-4 w-4" /> : <LuPencil className="h-4 w-4" />}
-            <span className="hidden md:inline">{editing ? 'Cancel' : 'Edit'}</span>
-          </Button>
+          <>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={onToggleEdit}
+              aria-label={editing ? 'Cancel edit' : 'Edit ticket'}
+            >
+              {editing ? <LuX className="h-4 w-4" /> : <LuPencil className="h-4 w-4" />}
+              <span className="sr-only">{editing ? 'Cancel edit' : 'Edit ticket'}</span>
+            </Button>
+            {onDelete && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-destructive hover:text-destructive"
+                onClick={onDelete}
+                disabled={isDeleting}
+                aria-label="Delete ticket"
+              >
+                <LuTrash className="h-4 w-4" />
+                <span className="sr-only">Delete ticket</span>
+              </Button>
+            )}
+          </>
         )}
         {onClose && (
           <button

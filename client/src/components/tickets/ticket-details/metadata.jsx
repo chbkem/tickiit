@@ -21,6 +21,7 @@ import {
 } from './utils';
 import MenuSelect from './menu-select';
 import Avatar from './avatar';
+import InfoItem from './info-item';
 
 const MetadataChips = ({
   ticket,
@@ -87,87 +88,92 @@ const MetadataChips = ({
     </>
   );
 
+  const statusField = isAdmin ? (
+    <MenuSelect
+      value={statusValue}
+      onChange={(next) => onSaveField('status', next)}
+      ariaLabel="Status"
+      disabled={savingField !== null}
+      saving={savingField === 'status'}
+      items={buildItems(TICKET_STATUS_OPTIONS, STATUS_DOT)}
+    >
+      {statusContent}
+    </MenuSelect>
+  ) : (
+    <span className={chipClasses}>{statusContent}</span>
+  );
+
+  const priorityField = isAdmin ? (
+    <MenuSelect
+      value={priorityValue}
+      onChange={(next) => onSaveField('priority', next)}
+      ariaLabel="Priority"
+      disabled={savingField !== null}
+      saving={savingField === 'priority'}
+      items={buildItems(PRIORITY_OPTIONS, PRIORITY_DOT)}
+    >
+      {priorityContent}
+    </MenuSelect>
+  ) : (
+    <span className={chipClasses}>{priorityContent}</span>
+  );
+
+  const typeField =
+    isAdmin ?
+      <MenuSelect
+        value={typeValue}
+        onChange={(next) => onSaveField('type', next)}
+        ariaLabel="Type"
+        disabled={savingField !== null}
+        saving={savingField === 'type'}
+        items={buildItems(TICKET_TYPE_OPTIONS, TYPE_DOT)}
+      >
+        {typeContent}
+      </MenuSelect>
+    : <span className={chipClasses}>{typeContent}</span>;
+
+  const assigneeField = isAdmin ? (
+    <MenuSelect
+      value={presentAssignee?.id || ''}
+      onChange={(next) => onSaveField('assigneeId', next || null)}
+      ariaLabel="Assignee"
+      disabled={savingField !== null}
+      saving={savingField === 'assigneeId'}
+      items={[
+        { value: '', label: 'Unassigned', icon: <LuUser className="h-3 w-3" /> },
+        ...assigneeOptions.map((member) => ({
+          value: member.id,
+          label: member.name || member.id,
+        })),
+      ]}
+    >
+      {assigneeContent}
+    </MenuSelect>
+  ) : (
+    <span className={chipClasses}>{assigneeContent}</span>
+  );
+
+  const dueField = isAdmin ? (
+    <input
+      type="datetime-local"
+      id="due-date-input"
+      aria-label="Due date"
+      value={toDatetimeLocal(ticket.dueAt)}
+      onChange={(e) => onSaveField('dueAt', e.target.value || null)}
+      disabled={savingField !== null}
+      className="h-8 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+    />
+  ) : (
+    ticket.dueAt && <span className={chipClasses}>{dueContent}</span>
+  );
+
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 px-6">
-      {isAdmin ? (
-        <MenuSelect
-          value={statusValue}
-          onChange={(next) => onSaveField('status', next)}
-          ariaLabel="Status"
-          disabled={savingField !== null}
-          saving={savingField === 'status'}
-          items={buildItems(TICKET_STATUS_OPTIONS, STATUS_DOT)}
-        >
-          {statusContent}
-        </MenuSelect>
-      ) : (
-        <span className={chipClasses}>{statusContent}</span>
-      )}
-
-      {isAdmin ? (
-        <MenuSelect
-          value={priorityValue}
-          onChange={(next) => onSaveField('priority', next)}
-          ariaLabel="Priority"
-          disabled={savingField !== null}
-          saving={savingField === 'priority'}
-          items={buildItems(PRIORITY_OPTIONS, PRIORITY_DOT)}
-        >
-          {priorityContent}
-        </MenuSelect>
-      ) : (
-        <span className={chipClasses}>{priorityContent}</span>
-      )}
-
-      {(typeValue || isAdmin) &&
-        (isAdmin ? (
-          <MenuSelect
-            value={typeValue}
-            onChange={(next) => onSaveField('type', next)}
-            ariaLabel="Type"
-            disabled={savingField !== null}
-            saving={savingField === 'type'}
-            items={buildItems(TICKET_TYPE_OPTIONS, TYPE_DOT)}
-          >
-            {typeContent}
-          </MenuSelect>
-        ) : (
-          <span className={chipClasses}>{typeContent}</span>
-        ))}
-
-      {isAdmin ? (
-        <MenuSelect
-          value={presentAssignee?.id || ''}
-          onChange={(next) => onSaveField('assigneeId', next || null)}
-          ariaLabel="Assignee"
-          disabled={savingField !== null}
-          saving={savingField === 'assigneeId'}
-          items={[
-            { value: '', label: 'Unassigned', icon: <LuUser className="h-3 w-3" /> },
-            ...assigneeOptions.map((member) => ({
-              value: member.id,
-              label: member.name || member.id,
-            })),
-          ]}
-        >
-          {assigneeContent}
-        </MenuSelect>
-      ) : (
-        <span className={chipClasses}>{assigneeContent}</span>
-      )}
-
-      {isAdmin ? (
-        <input
-          type="datetime-local"
-          aria-label="Due date"
-          value={toDatetimeLocal(ticket.dueAt)}
-          onChange={(e) => onSaveField('dueAt', e.target.value || null)}
-          disabled={savingField !== null}
-          className="h-8 rounded-md border border-border bg-background px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-        />
-      ) : (
-        ticket.dueAt && <span className={chipClasses}>{dueContent}</span>
-      )}
+    <div className="border-b border-border px-6">
+      <InfoItem label="Status:">{statusField}</InfoItem>
+      <InfoItem label="Priority:">{priorityField}</InfoItem>
+      {(typeValue || isAdmin) && <InfoItem label="Type:">{typeField}</InfoItem>}
+      <InfoItem label="Assignee:">{assigneeField}</InfoItem>
+      <InfoItem label="Due date:">{dueField}</InfoItem>
     </div>
   );
 };

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/react';
-import { LuTrash2, LuArrowLeft } from 'react-icons/lu';
+import { LuTrash2, LuArrowLeft, LuAlertTriangle } from 'react-icons/lu';
 import { getTicketById } from '../actions/get-ticket-by-id';
-import { Button } from '../components/ui';
+import { Button, EmptyState, Spinner } from '../components/ui';
 
 const EditTicket = () => {
   const { id } = useParams();
@@ -14,9 +14,12 @@ const EditTicket = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchTicket = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const token = await getToken();
         const data = await getTicketById(id, token);
@@ -26,6 +29,7 @@ const EditTicket = () => {
         setCategory(data.category || '');
       } catch (err) {
         console.error('Failed to fetch ticket:', err);
+        setError(err.message || 'Failed to fetch ticket');
       } finally {
         setLoading(false);
       }
@@ -45,11 +49,46 @@ const EditTicket = () => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center p-8 text-muted-foreground">Loading...</div>;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6">
+        <Spinner />
+        <p className="text-sm text-muted-foreground">Loading ticket...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <EmptyState
+          icon={<LuAlertTriangle className="h-6 w-6" />}
+          title="Couldn't load this ticket"
+          description={`${error} It may have been removed or you may not have access to it.`}
+          action={
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              Back to dashboard
+            </Button>
+          }
+        />
+      </div>
+    );
   }
 
   if (!ticket) {
-    return <div className="flex items-center justify-center p-8 text-muted-foreground">Ticket not found</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <EmptyState
+          icon={<LuTrash2 className="h-6 w-6" />}
+          title="Ticket not found"
+          description="This ticket doesn't exist or has been deleted."
+          action={
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              Back to dashboard
+            </Button>
+          }
+        />
+      </div>
+    );
   }
 
   return (

@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Show, RedirectToSignIn } from '@clerk/react'
 import Landing from './pages/landing';
-import AllTicket from './pages/all-ticket';
+import Dashboard from './pages/dashboard';
 import CreateTicket from './pages/create-ticket';
 import EditTicket from './pages/edit-ticket';
 import Tickets from './pages/tickets';
@@ -20,7 +20,7 @@ function App() {
               <DashboardShell />
             </Show>
           }>
-            <Route index element={<AllTicket />} />
+            <Route index element={<Dashboard />} />
             <Route path='create-ticket' element={<CreateTicket />} />
             <Route path='edit-ticket/:id' element={<EditTicket />} />
             <Route path='tickets' element={<Tickets />} />

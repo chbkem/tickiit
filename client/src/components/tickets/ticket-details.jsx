@@ -5,6 +5,7 @@ import { LuTicket } from 'react-icons/lu';
 import { getTicketComments } from '../../actions/get-ticket-comments';
 import { addComment } from '../../actions/add-comment';
 import { updateTicket } from '../../actions/update-ticket';
+import { deleteTicket } from '../../actions/delete-ticket';
 import { formatTicketDate } from '../../lib/format-date';
 import { EmptyState, Tabs, TabsList, TabsTrigger, TabsContent } from '../ui';
 import { usePersonResolver } from '../../lib/person-name';
@@ -13,7 +14,7 @@ import MetadataChips from './ticket-details/metadata';
 import DescriptionSection from './ticket-details/description';
 import CommentsSection from './ticket-details/comments';
 
-const TicketDetails = ({ ticket, onTicketUpdated, onClose }) => {
+const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) => {
   const { getToken, userId, orgId, orgRole } = useAuth();
   const { resolvePerson, orgMembers } = usePersonResolver();
   const [comments, setComments] = useState([]);
@@ -24,6 +25,7 @@ const TicketDetails = ({ ticket, onTicketUpdated, onClose }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ subject: '', description: '' });
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isDeletingTicket, setIsDeletingTicket] = useState(false);
 
   const ticketId = ticket?.id;
   const latestTicketRef = useRef(ticket);
@@ -152,6 +154,24 @@ const TicketDetails = ({ ticket, onTicketUpdated, onClose }) => {
     }
   };
 
+  const handleDeleteTicket = async () => {
+    if (!ticket) return;
+    const confirmed = window.confirm('Are you sure you want to delete this ticket? This action cannot be undone.');
+    if (!confirmed) return;
+    setIsDeletingTicket(true);
+    try {
+      const token = await getToken();
+      await deleteTicket(ticket.id, token);
+      toast.success('Ticket deleted');
+      onClose?.();
+      onTicketDeleted?.(ticket.id);
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete ticket');
+    } finally {
+      setIsDeletingTicket(false);
+    }
+  };
+
   if (!ticket) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
@@ -176,20 +196,13 @@ const TicketDetails = ({ ticket, onTicketUpdated, onClose }) => {
             editing={editing}
             isAdmin={isAdmin}
             onToggleEdit={() => setEditing((value) => !value)}
+            onDelete={handleDeleteTicket}
+            isDeleting={isDeletingTicket}
             onClose={onClose}
             createdAt={ticket.createdAt}
             creatorName={resolvePerson(ticket.requesterId)}
             ticketId={ticket.id}
             idLabel={idLabel}
-          />
-          <MetadataChips
-            ticket={ticket}
-            isAdmin={isAdmin}
-            savingField={savingField}
-            onSaveField={handleMetadataUpdate}
-            presentAssignee={presentAssignee}
-            assigneeOptions={assigneeOptions}
-            dueText={ticket.dueAt ? formatTicketDate(ticket.dueAt) : 'No due date'}
           />
           <Tabs defaultValue="details" className="flex flex-col flex-1">
             <TabsList variant="line" className="border-b border-border px-4" style={{ '--tabs-indicator-color': 'hsl(var(--primary))' }}>
@@ -210,6 +223,15 @@ const TicketDetails = ({ ticket, onTicketUpdated, onClose }) => {
                 onSave={handleSaveDraft}
                 isSavingDraft={isSavingDraft}
               />
+          <MetadataChips
+            ticket={ticket}
+            isAdmin={isAdmin}
+            savingField={savingField}
+            onSaveField={handleMetadataUpdate}
+            presentAssignee={presentAssignee}
+            assigneeOptions={assigneeOptions}
+            dueText={ticket.dueAt ? formatTicketDate(ticket.dueAt) : 'No due date'}
+          />
             </TabsContent>
             <TabsContent value="conversation" className="flex-1 p-0">
               <CommentsSection
@@ -221,6 +243,9 @@ const TicketDetails = ({ ticket, onTicketUpdated, onClose }) => {
                 onSubmit={handleAddComment}
                 resolvePerson={resolvePerson}
                 userId={userId}
+                description={ticket.description}
+                descriptionAuthorId={ticket.requesterId ?? ticket.createdBy ?? ticket.requester}
+                descriptionCreatedAt={ticket.createdAt}
               />
             </TabsContent>
           </Tabs>
