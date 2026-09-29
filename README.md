@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./client/public/logo.svg" alt="tickiit" width="96" />
+  <img src="client/public/logo.svg" alt="tickiit" width="96" />
 </p>
 
 <h1 align="center">tickiit</h1>

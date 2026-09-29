@@ -1,12 +1,15 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@clerk/react';
+import toast from 'react-hot-toast';
 import {
   Badge,
   Button,
   Checkbox,
+  EmptyState,
   Input,
   Select,
+  Spinner,
   Table,
   TableBody,
   TableCell,
@@ -14,7 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from '../ui';
-import { LuClock, LuPlus, LuTicket } from 'react-icons/lu';
+import { LuAlertTriangle, LuClock, LuPlus, LuTicket, LuTrash } from 'react-icons/lu';
+import { deleteTicket } from '../../actions/delete-ticket';
 import { PRIORITY_OPTIONS, TICKET_TYPE_OPTIONS } from '../../lib/constants';
 import { formatTicketDateTime } from '../../lib/format-date';
 import { cn } from '../../lib/utils';
@@ -31,13 +35,14 @@ const statusBadgeVariant = {
 
 const CATEGORY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
 
-const TicketList = ({ tickets, onOpenCreate }) => {
-  const { orgId } = useAuth();
+const TicketList = ({ tickets, loading, error, onRetry, onOpenCreate, onTicketDeleted }) => {
+  const { orgId, getToken } = useAuth();
   const { resolvePerson } = usePersonResolver();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deletingIds, setDeletingIds] = useState(new Set());
 
   const activeTicketId = searchParams.get('ticketId');
 
@@ -108,6 +113,32 @@ const TicketList = ({ tickets, onOpenCreate }) => {
     });
   };
 
+  const handleDeleteTicket = async (ticketId, event) => {
+    event.stopPropagation();
+    const confirmed = window.confirm('Are you sure you want to delete this ticket? This action cannot be undone.');
+    if (!confirmed) return;
+    setDeletingIds((prev) => new Set(prev).add(ticketId));
+    try {
+      const token = await getToken();
+      await deleteTicket(ticketId, token);
+      toast.success('Ticket deleted');
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(ticketId);
+        return next;
+      });
+      onTicketDeleted?.(ticketId);
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete ticket');
+    } finally {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(ticketId);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border p-4">
@@ -151,17 +182,40 @@ const TicketList = ({ tickets, onOpenCreate }) => {
         )}
       </div>
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {groupedTickets.length === 0 ? (
+        {loading ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <LuTicket className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {search || typeFilter
-                ? 'No tickets match your search. Try adjusting the filters.'
-                : 'No tickets yet. Create one to get started.'}
-            </p>
+            <Spinner />
+            <p className="text-sm text-muted-foreground">Loading tickets...</p>
           </div>
+        ) : error ? (
+          <EmptyState
+            icon={<LuAlertTriangle className="h-5 w-5" />}
+            title="Couldn't load tickets"
+            description={`${error} Try again in a moment.`}
+            action={
+              <Button size="sm" variant="outline" onClick={onRetry}>
+                Try again
+              </Button>
+            }
+          />
+        ) : groupedTickets.length === 0 ? (
+          <EmptyState
+            icon={<LuTicket className="h-5 w-5" />}
+            title={search || typeFilter ? 'No matches' : 'No tickets yet'}
+            description={
+              search || typeFilter
+                ? 'No tickets match your search. Try adjusting the filters.'
+                : 'Create one to get started.'
+            }
+            action={
+              !search && !typeFilter ? (
+                <Button size="sm" onClick={onOpenCreate}>
+                  <LuPlus className="h-4 w-4" />
+                  New ticket
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="w-full overflow-x-auto px-2">
             <Table className={orgId ? 'min-w-[960px] table-fixed' : 'min-w-[820px] table-fixed'}>
@@ -181,6 +235,7 @@ const TicketList = ({ tickets, onOpenCreate }) => {
                   {orgId && <TableHead>Requester</TableHead>}
                   <TableHead>Assignee / Group</TableHead>
                   <TableHead>Last activity</TableHead>
+                  <TableHead className="w-12" aria-label="Actions" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -188,7 +243,7 @@ const TicketList = ({ tickets, onOpenCreate }) => {
                   <Fragment key={group.key}>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
                       <TableCell
-                        colSpan={orgId ? 7 : 6}
+                        colSpan={orgId ? 8 : 7}
                         className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                       >
                         {group.label}
@@ -282,6 +337,21 @@ const TicketList = ({ tickets, onOpenCreate }) => {
                               <LuClock className="h-3.5 w-3.5 shrink-0" />
                               {formatTicketDateTime(ticket.updatedAt || ticket.createdAt)}
                             </span>
+                          </TableCell>
+                          <TableCell className="w-12 pr-4">
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteTicket(ticket.id, e)}
+                              disabled={deletingIds.has(ticket.id)}
+                              aria-label={`Delete ticket ${ticket.ticketNumber}`}
+                              title="Delete ticket"
+                              className={cn(
+                                'flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+                                active && 'text-background/70 hover:bg-primary hover:text-background'
+                              )}
+                            >
+                              <LuTrash className="h-4 w-4" />
+                            </button>
                           </TableCell>
                         </TableRow>
                       );
