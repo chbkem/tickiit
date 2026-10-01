@@ -6,6 +6,7 @@ const mammoth = require("mammoth");
 const TurndownService = require("turndown");
 
 const SUPPORTED_EXTENSIONS = Object.freeze(["txt", "md", "pdf", "docx"]);
+const FALLBACK_TITLE = "Untitled document";
 
 const FILE_FORMATS = Object.freeze({
   txt: Object.freeze({
@@ -60,6 +61,14 @@ const inferFileFormat = ({ fileName, mimeType } = {}) => {
   return format;
 };
 
+const titleFromFileName = (fileName) => {
+  const base = path.basename(typeof fileName === "string" ? fileName : "");
+  const extension = getExtension(base);
+  const stem = extension ? base.slice(0, -(extension.length + 1)) : base;
+  const clean = sanitizeText(stem).replace(/\s+/g, " ").trim();
+  return clean || FALLBACK_TITLE;
+};
+
 const extractPlainText = (buffer) => {
   let text = buffer.toString("utf8");
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
@@ -95,7 +104,7 @@ const pdfExtractionError = (err) => {
 const docxExtractionError = () =>
   new ApiError(422, "The Word file could not be read. It may be damaged or not a valid .docx file.");
 
-const extractMarkdown = async ({ buffer, fileName, mimeType } = {}) => {
+const extractMarkdown = async ({ buffer, fileName, mimeType, maxChars } = {}) => {
   if (!Buffer.isBuffer(buffer)) {
     throw new ApiError(415, "A file buffer is required.");
   }
@@ -125,14 +134,22 @@ const extractMarkdown = async ({ buffer, fileName, mimeType } = {}) => {
     }
     throw new ApiError(422, "The file contains no readable text.");
   }
+  if (Number.isInteger(maxChars) && maxChars > 0 && clean.length > maxChars) {
+    throw new ApiError(
+      422,
+      `The extracted text is too large. It is ${clean.length} characters but the limit is ${maxChars}.`,
+    );
+  }
   return clean;
 };
 
 module.exports = {
   SUPPORTED_EXTENSIONS,
   FILE_FORMATS,
+  FALLBACK_TITLE,
   getExtension,
   inferFileFormat,
+  titleFromFileName,
   extractPlainText,
   extractPdfText,
   extractDocxMarkdown,

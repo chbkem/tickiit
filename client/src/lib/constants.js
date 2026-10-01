@@ -24,3 +24,9 @@ export const TICKET_STATUS_OPTIONS = [
 ];
 
 export const toApiEnumValue = (value) => String(value ?? '').toUpperCase().replace(/[- ]/g, '_');
+
+export const KB_ACCEPTED_EXTENSIONS = ['txt', 'md', 'pdf', 'docx'];
+
+export const KB_UPLOAD_ACCEPT = KB_ACCEPTED_EXTENSIONS.map((extension) => `.${extension}`).join(',');
+
+export const KB_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;

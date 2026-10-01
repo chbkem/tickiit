@@ -7,6 +7,8 @@ const {
   extractMarkdown,
   inferFileFormat,
   pdfExtractionError,
+  titleFromFileName,
+  FALLBACK_TITLE,
   SUPPORTED_EXTENSIONS,
 } = require("./fileFormats");
 const ApiError = require("./ApiError");
@@ -132,10 +134,32 @@ describe("fileFormats", () => {
     );
   });
 
+  test("titleFromFileName strips the final extension and any path", () => {
+    assert.equal(titleFromFileName("folder/Refund Policy v2.docx"), "Refund Policy v2");
+    assert.equal(titleFromFileName("release.notes.md"), "release.notes");
+  });
+
+  test("titleFromFileName falls back when nothing readable is left", () => {
+    assert.equal(titleFromFileName(""), FALLBACK_TITLE);
+  });
+
   test("rejects a non buffer input", async () => {
-    await assert.rejects(
+    await     assert.rejects(
       extractMarkdown({ buffer: "string instead of buffer", fileName: "a.txt", mimeType: "text/plain" }),
       (err) => err instanceof ApiError && err.statusCode === 415,
+    );
+  });
+
+  test("rejects extracted text over the configured character cap", async () => {
+    await assert.rejects(
+      extractMarkdown({
+        buffer: Buffer.from("12345"),
+        fileName: "notes.txt",
+        mimeType: "text/plain",
+        maxChars: 4,
+      }),
+      (err) =>
+        err instanceof ApiError && err.statusCode === 422 && /too large/.test(err.message),
     );
   });
 });
