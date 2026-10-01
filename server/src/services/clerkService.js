@@ -53,7 +53,7 @@ const assertUserIsAdminInOrganization = async ({ userId, orgId, sessionOrgId, se
   const role =
     orgId === sessionOrgId ? sessionOrgRole ?? null : await getUserOrganizationRole(userId, orgId);
   if (!ADMIN_ROLES.has(role)) {
-    throw new ApiError(403, "Only admins can assign tickets.");
+    throw new ApiError(403, "Only organization admins can perform this action.");
   }
 };
 

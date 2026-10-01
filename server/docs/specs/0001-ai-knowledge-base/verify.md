@@ -31,3 +31,12 @@ End to end proof for the spec. Run against a dev server with a real database and
 - [ ] Query the live database (DIRECT_URL): `KnowledgeArticle`, `KnowledgeChunk`, and the `KnowledgeSource` enum exist; `KnowledgeChunk.embedding` is type `vector`; the `KnowledgeChunk_embedding_idx` HNSW index is present, proves **AC-1**, **AC-5**.
 - [ ] `node --test src/utils/fileFormats.test.js` passes. Covers txt and md pass through, a PDF with a text layer extracting, and a scanned PDF, password protected PDF, legacy `.doc`, unsupported extension, and mime mismatch each failing with its clear message, proves **AC-2**, **AC-3**.
 - [ ] As an org admin, upload a PDF and a docx (run end to end once the upload route from Slice 3 exists). Each returns an article whose body holds the extracted markdown, proves **AC-2**.
+
+## Slice 3: KB admin API and uploads, updated 2026-09-25
+
+- [ ] `node --test src/validators/kbSchemas.test.js src/middleware/kbUpload.test.js src/middleware/requireKnowledgeAdmin.test.js src/ai/knowledge/knowledgeService.test.js` passes, proves **AC-1**, **AC-2**, **AC-3** at the unit and multipart boundary.
+- [ ] As an org admin, `POST /api/kb/articles`, then `GET`, `PATCH` the body, then `DELETE` the same article. Each returns 2xx, the patch replaces every chunk, and the delete removes the chunks too, proves **AC-1**.
+- [ ] As a non admin org member, call all five routes. Each returns 403, and as org B an org A article id returns 404 on `GET`, `PATCH`, and `DELETE`, proves **AC-1**.
+- [ ] Upload a txt, a md, a PDF with a text layer, and a docx. Each returns an article whose body holds the extracted markdown, the title is the filename without its final extension, tags are `[]`, and source is `FILE`, proves **AC-2** and the value sourcing rules.
+- [ ] Upload a scanned PDF, a password protected PDF, a legacy `.doc`, an `.exe`, and a 12 MB txt. Each returns a clear 422, 415, or 413 and no `KnowledgeArticle` row appears, proves **AC-3**.
+- [ ] Set `KB_MAX_TEXT_CHARS` to a value just under the extracted length of a docx. Uploading it returns 422 naming the cap, and no article row appears, proves **AC-3** and the config default.
