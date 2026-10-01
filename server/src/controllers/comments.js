@@ -5,6 +5,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const logger = require("../lib/logger");
 const ticketService = require("../services/ticketService");
 const commentService = require("../services/commentService");
+const { dispatchReply } = require("../services/replyDispatcher");
 const { assertCanAccessTicket } = require("../utils/access");
 const { assertUserIsAdminInOrganization } = require("../services/clerkService");
 
@@ -60,6 +61,11 @@ exports.createComment = asyncHandler(async (req, res) => {
   assertCanAccessTicket(ticket, { userId, orgId });
 
   const comment = await commentService.createComment(ticket.id, userId, req.body.body);
+
+  // Dispatch the reply to the customer's channel (email/Telegram) when this is
+  // a channel ticket. Dispatch failures are logged inside dispatchReply and
+  // never fail the comment creation.
+  await dispatchReply(ticket, comment.body);
 
   logger.info("Comment created", {
     commentId: comment.id,

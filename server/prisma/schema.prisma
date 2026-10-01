@@ -26,6 +26,7 @@ model Ticket {
   closedAt       DateTime?
   dueAt          DateTime?
   source         String
+  channelRecipient String?
   comments       Comment[]
 
   @@index([requesterKey])
@@ -71,6 +72,29 @@ model KnowledgeChunk {
   @@index([articleId])
 }
 
+model Channel {
+  id         String       @id @default(uuid())
+  orgId      String
+  channel    ChannelType
+  identifier String
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([orgId, channel, identifier])
+  @@index([orgId])
+}
+
+model IngestionEvent {
+  id         String   @id @default(uuid())
+  channel    ChannelType
+  externalId String
+  ticketId   String?
+  createdAt  DateTime @default(now())
+
+  @@unique([channel, externalId])
+}
+
 enum KnowledgeSource {
   ARTICLE
   FILE
@@ -98,4 +122,9 @@ enum TicketType {
   BUG
   INCIDENT
   REQUEST
+}
+
+enum ChannelType {
+  EMAIL
+  TELEGRAM
 }

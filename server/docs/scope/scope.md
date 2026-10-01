@@ -38,11 +38,13 @@ Intent: let users send in tickets from email and Telegram. Messages become ticke
 
 Done when: an email or Telegram message creates a ticket, the sender is identified and linked, and the ticket flows through the same triage and reply pipeline as web created tickets.
 
-- [x] Design it (spec), links [0002](../specs/0002-omnichannel-ticket-intake.md)
-- [ ] Build it: /develop omnichannel-ticket-intake
-  - [ ] Slice 1: Email end to end (data model, webhook, SMTP integration, reply dispatch), satisfies AC-1, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-10
-  - [ ] Slice 2: Telegram end to end (webhook, reply dispatch), satisfies AC-2, AC-3, AC-4, AC-6, AC-7, AC-9
-  - [ ] Slice 3: Channel management (CRUD endpoints, admin UI), satisfies AC-8
+Code in: `server/prisma/schema.prisma`, `server/src/routes/channels.js`, `server/src/controllers/channels.js`, `server/src/controllers/emailWebhook.js`, `server/src/controllers/telegramWebhook.js`, `server/src/services/channelService.js`, `server/src/services/ingestionService.js`, `server/src/services/replyDispatcher.js`, `server/src/services/emailService.js`, `server/src/services/telegramService.js`, `server/src/middleware/channelWebhookAuth.js`, `server/src/validators/channelSchemas.js`, `server/src/channels/smtpServer.js`, `client/src/actions/channels.js`, `client/src/hooks/use-channels.js`, `client/src/components/settings/channels-tab.jsx`
+
+- [x] Design it (spec), links [0002](../specs/0002-omnichannel-ticket-intake/index.md)
+- [x] Build it: /develop omnichannel-ticket-intake
+  - [x] Slice 1: Email end to end (data model, webhook, SMTP integration, reply dispatch), satisfies AC-1, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-10
+  - [x] Slice 2: Telegram end to end (webhook, reply dispatch), satisfies AC-2, AC-3, AC-4, AC-6, AC-7, AC-9
+  - [x] Slice 3: Channel management (CRUD endpoints, admin UI), satisfies AC-8
 - [ ] Verify it: /check verify omnichannel-ticket-intake
 
 ## Deferred

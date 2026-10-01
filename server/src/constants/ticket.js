@@ -3,4 +3,5 @@ module.exports = Object.freeze({
   PRIORITIES: Object.freeze(["LOW", "MEDIUM", "HIGH", "URGENT"]),
   TICKET_TYPES: Object.freeze(["TASK", "BUG", "INCIDENT", "REQUEST"]),
   DEFAULT_SOURCE: "API",
+  CHANNEL_TYPES: Object.freeze(["EMAIL", "TELEGRAM"]),
 });

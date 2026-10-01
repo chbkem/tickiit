@@ -5,6 +5,7 @@ const helmet = require("helmet");
 const ticketsRouter = require("./routes/tickets");
 const aiTriageRouter = require("./routes/aiTriage");
 const kbRouter = require("./routes/kb");
+const channelsRouter = require("./routes/channels");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 const { clerkMiddleware } = require("@clerk/express");
 const logger = require("./lib/logger");
@@ -64,6 +65,7 @@ app.get("/", (req, res) => {
 app.use("/api/tickets", ticketsRouter);
 app.use("/api/ai/triage", aiTriageRouter);
 app.use("/api/kb", kbRouter);
+app.use("/api/channels", channelsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
