@@ -3,6 +3,8 @@ import { useAuth } from '@clerk/react';
 import {
   getChannels,
   createChannel,
+  rotateChannelToken,
+  sendChannelTest,
   updateChannel,
   deleteChannel,
 } from '../actions/channels';
@@ -49,6 +51,26 @@ export function useChannels() {
     [getToken, refetch]
   );
 
+  const rotateToken = useCallback(
+    async (id, botToken) => {
+      const token = await getToken();
+      const channel = await rotateChannelToken(id, botToken, token);
+      await refetch();
+      return channel;
+    },
+    [getToken, refetch]
+  );
+
+  const sendTest = useCallback(
+    async (id, chatId) => {
+      const token = await getToken();
+      const result = await sendChannelTest(id, chatId, token);
+      await refetch();
+      return result;
+    },
+    [getToken, refetch]
+  );
+
   const editChannel = useCallback(
     async (id, input) => {
       const token = await getToken();
@@ -68,5 +90,15 @@ export function useChannels() {
     [getToken, refetch]
   );
 
-  return { channels, loading, error, refetch, addChannel, editChannel, removeChannel };
+  return {
+    channels,
+    loading,
+    error,
+    refetch,
+    addChannel,
+    rotateToken,
+    sendTest,
+    editChannel,
+    removeChannel,
+  };
 }

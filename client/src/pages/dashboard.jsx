@@ -101,7 +101,7 @@ const Dashboard = () => {
     : 'Your personal ticket queue';
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-8 overflow-y-auto px-6 py-8">
+    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-8 px-6 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>

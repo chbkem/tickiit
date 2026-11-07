@@ -76,7 +76,7 @@ const Tickets = () => {
   }, [tickets, activeTicketId]);
 
   return (
-    <div className="h-[calc(100vh-3rem)]">
+    <div className="h-full overflow-hidden">
       <div className="hidden h-full md:flex">
         <ResizablePanelGroup
           direction="horizontal"

@@ -9,6 +9,7 @@
 |---|---|---|---|
 | Knowledge base for the AI triage pipeline | in-progress | [0001](../specs/0001-ai-knowledge-base/index.md) | 2026-09-25 |
 | Omnichannel ticket intake | in-progress | [0002](../specs/0002-omnichannel-ticket-intake.md) | 2026-10-01 |
+| Bring your own Telegram bots | in-progress | [0003](../specs/0003-bring-your-own-telegram-bots/index.md) | 2026-10-02 |
 
 ## Features
 
@@ -46,6 +47,24 @@ Code in: `server/prisma/schema.prisma`, `server/src/routes/channels.js`, `server
   - [x] Slice 2: Telegram end to end (webhook, reply dispatch), satisfies AC-2, AC-3, AC-4, AC-6, AC-7, AC-9
   - [x] Slice 3: Channel management (CRUD endpoints, admin UI), satisfies AC-8
 - [ ] Verify it: /check verify omnichannel-ticket-intake
+
+### 3. Bring your own Telegram bots (from spec 0003)
+
+Intent: move the Telegram bot credentials off the instance and onto the organization's own channel row, so any admin can bring their own bot by pasting a token and the server does the rest.
+
+Done when: an admin pastes a token, the server registers the webhook and confirms the bot, inbound updates are authenticated per bot, replies go out through that bot's own token, a broken token is visible and recoverable, and several organizations each run their own bot.
+
+Supersedes the Telegram configuration half of spec 0002. Email intake is untouched.
+
+Code in: `server/prisma/schema.prisma`, `server/prisma/sql/backfill-channel-links.sql`, `server/src/config/channels.js`, `server/src/utils/secretCrypto.js`, `server/src/services/telegramService.js`, `server/src/services/channelService.js`, `server/src/services/replyDispatcher.js`, `server/src/controllers/channels.js`, `server/src/controllers/telegramWebhook.js`, `server/src/routes/channels.js`, `server/src/validators/channelSchemas.js`, `server/src/middleware/channelWebhookAuth.js`, `server/src/index.js`, `server/.env.example`, `client/src/actions/channels.js`, `client/src/hooks/use-channels.js`, `client/src/components/settings/channels-tab.jsx`
+
+- [x] Design it (spec), links [0003](../specs/0003-bring-your-own-telegram-bots/index.md)
+- [ ] Build it: /develop bring-your-own-telegram-bots
+  - [x] Milestone 1: schema, encryption helper, and backfill, satisfies AC-3, AC-10, AC-12
+  - [x] Milestone 2: one bot end to end, connect, register, inbound, reply, satisfies AC-1, AC-2, AC-3, AC-4, AC-5, AC-7, AC-8, AC-12
+  - [x] Milestone 3: rotation, health status, audit trail, test send, env var removal, satisfies AC-6, AC-9, AC-10, AC-11
+  - [x] Milestone 4: Channels tab rework with token form, status column, and test button, satisfies AC-1, AC-6, AC-9, AC-11
+- [ ] Verify it: /check verify bring-your-own-telegram-bots
 
 ## Deferred
 

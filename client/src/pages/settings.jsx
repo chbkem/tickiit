@@ -35,7 +35,7 @@ const Settings = () => {
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 overflow-y-auto px-6 py-8">
+    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 px-6 py-8">
       <header>
         <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">

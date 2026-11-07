@@ -19,9 +19,13 @@ The Express 5 API. It owns all authentication, the ticket lifecycle, comments, t
 | `src/utils/access.js` | `assertCanAccessTicket`, the personal ticket visibility rule |
 | `src/utils/ticketNumber.js` | `#0001` style numbers, allocated under a Postgres advisory lock |
 | `src/services/clerkService.js` | Every Clerk call and the only place role checks live (`ADMIN_ROLES = admin, org:admin`) |
+| `src/services/channelService.js` | Channel CRUD, Telegram connect and rotate as one shared function, `serializeChannel`, the webhook secret lookup, status stamping, the audit trail, and the decrypt sweep |
+| `src/services/telegramService.js` | The Telegram Bot API client. `getMe`, `getWebhookInfo`, `setWebhook`, `sendMessage`, each taking a token argument, five second timeout |
+| `src/utils/secretCrypto.js` | `encryptSecret` and `decryptSecret` (aes-256-gcm), `canDecryptSecret`, `randomSecret`, and the `CHANNEL_ENCRYPTION_KEY` reader |
+| `src/config/channels.js` | `CHANNEL_PUBLIC_BASE_URL` and the fixed webhook URL builder |
 | `src/routes/*.js` | Wiring only. No logic, no `prisma` |
-| `prisma/schema.prisma` | `Ticket`, `Comment`, `KnowledgeArticle`, `KnowledgeChunk` plus four enums. No `url` in the datasource |
-| `prisma/sql/*.sql` | Hand run SQL: enable the pgvector extension, then build the HNSW index |
+| `prisma/schema.prisma` | `Ticket`, `Comment`, `KnowledgeArticle`, `KnowledgeChunk`, `Channel`, `ChannelAudit`, `IngestionEvent` plus six enums. No `url` in the datasource |
+| `prisma/sql/*.sql` | Hand run SQL: enable the pgvector extension, build the HNSW index, backfill channel links |
 | `.env.example` | The most accurate env reference in the repo. More current than the root README |
 | `docs/scope/scope.md` | The feature status board. Read it first to learn what is done |
 
@@ -47,6 +51,12 @@ npm run prisma:push
 npx prisma db execute --file prisma/sql/knowledge-hnsw-index.sql  # after the push
 ```
 
+One `db push` needs the consent flag, because it adds unique constraints:
+
+```bash
+npx prisma db push --accept-data-loss   # also needs PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION
+```
+
 ## Conventions
 
 - Four layers, always: `routes/` wires, `middleware/validate.js` validates, `controllers/` authorize and orchestrate, `services/` hold every Prisma and Clerk call. `controllers/kb.js` is the one controller that skips `services/`, because `ai/knowledge/knowledgeService.js` fills that role.
@@ -65,6 +75,12 @@ npx prisma db execute --file prisma/sql/knowledge-hnsw-index.sql  # after the pu
 - **pgvector must be enabled by hand.** `prisma db push` cannot create the `vector` type. Run `prisma/sql/enable-pgvector.sql` first, and the HNSW index file after the push, because the table has to exist first. Neither step is wired into an npm script.
 - **`postinstall` runs `prisma generate`,** so a broken schema fails `npm install` itself.
 - **Rate limits live in process memory.** Each replica counts on its own, and the factory warns once in production.
+- **A Telegram bot token never leaves the server.** No route, error body, or log line carries the ciphertext, the iv, the auth tag, or the plaintext. `serializeChannel` is the only shape a channel route returns and it strips all of them, so a new channel route must go through it rather than returning a row directly.
+- **Two Telegram secrets, two jobs.** `botTokenCiphertext` grants the ability to send as the bot; `webhookSecret` only lets its holder post fake updates. They are stored separately and never returned. Inbound auth resolves the bot from the `X-Telegram-Bot-Api-Secret-Token` header, never from a URL segment.
+- **`decryptSecret` returns null rather than throwing when a row will not open,** and a null from a row that *does* have a ciphertext means the key rotated. Callers testing "is this usable" should check for null, not wrap in try/catch.
+- **`CHANNEL_ENCRYPTION_KEY` and `CHANNEL_PUBLIC_BASE_URL` warn when missing and throw when malformed.** An absent value leaves the rest of the API working; a present but wrong value fails at startup. Token endpoints answer 503 while they are unset.
+- **The startup sweep marks, it does not corrupt.** Channels stranded by a rotated key get `status: ERROR`; the stored token still opens under the right key, so nothing is lost.
+- **`IngestionEvent` dedups on `(channelId, externalId)`,** not `(channel, externalId)`. Telegram numbers messages per chat, so two bots both send `message_id` 5 and the old pair silently dropped the second. `channelId` is nullable only until the tighten phase.
 - **CORS defaults to localhost only and the failure is quiet.** `configureCors()` falls back to the two localhost origins and only warns when `NODE_ENV` is exactly `production`.
 - **`GET /api/tickets` returns an object grouped by priority,** not an array: `{ urgent: [...], high: [...] }`.
 - **Ticket numbers are safe only inside the transaction.** `pg_advisory_xact_lock` plus a `MAX` scan must run in the same `$transaction` as the insert in `ticketService.createTicket`.
@@ -84,6 +100,8 @@ npx prisma db execute --file prisma/sql/knowledge-hnsw-index.sql  # after the pu
 ## Related specs
 
 - [AI knowledge base](docs/specs/0001-ai-knowledge-base/index.md), status in progress
+- [Omnichannel ticket intake](docs/specs/0002-omnichannel-ticket-intake/index.md), email half shipped, Telegram half superseded by 0003
+- [Bring your own Telegram bots](docs/specs/0003-bring-your-own-telegram-bots/index.md), built and awaiting `/check verify`
 - [Its rationale](docs/specs/0001-ai-knowledge-base/rationale.md), why local embeddings and pgvector won
 - [The verify checklist](docs/specs/0001-ai-knowledge-base/verify.md), still fully unticked
 

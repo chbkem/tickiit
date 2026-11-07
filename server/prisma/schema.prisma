@@ -7,54 +7,59 @@ datasource db {
 }
 
 model Ticket {
-  id             String     @id @default(uuid())
-  ticketNumber   String     @unique
-  subject        String
-  description    String?
-  status         Status     @default(OPEN)
-  priority       Priority   @default(MEDIUM)
-  type           TicketType @default(TASK)
-  requesterId    String
-  requesterName  String?
-  requesterEmail String?
-  requesterKey   String?
-  assigneeId     String?
-  orgId          String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  resolvedAt     DateTime?
-  closedAt       DateTime?
-  dueAt          DateTime?
-  source         String
+  id               String     @id @default(uuid())
+  ticketNumber     String     @unique
+  subject          String
+  description      String?
+  status           Status     @default(OPEN)
+  priority         Priority   @default(MEDIUM)
+  type             TicketType @default(TASK)
+  requesterId      String
+  requesterName    String?
+  requesterEmail   String?
+  requesterKey     String?
+  assigneeId       String?
+  orgId            String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  resolvedAt       DateTime?
+  closedAt         DateTime?
+  dueAt            DateTime?
+  source           String
   channelRecipient String?
-  comments       Comment[]
+  // Bring your own Telegram bots (spec 0003). Null on web and email tickets, and
+  // on Telegram tickets whose channel row was deleted (SetNull keeps the ticket).
+  channelId        String?
+  channel          Channel?   @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  comments         Comment[]
 
   @@index([requesterKey])
   @@index([orgId, assigneeId, status])
+  @@index([channelId])
 }
 
 model Comment {
-  id        String       @id @default(uuid())
+  id        String   @id @default(uuid())
   ticketId  String
-  ticket    Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   authorId  String
   body      String
-  createdAt DateTime     @default(now())
+  createdAt DateTime @default(now())
 }
 
 model KnowledgeArticle {
-  id        String            @id @default(uuid())
+  id        String           @id @default(uuid())
   orgId     String
   title     String
   body      String
-  source    KnowledgeSource   @default(ARTICLE)
+  source    KnowledgeSource  @default(ARTICLE)
   sourceUrl String?
   fileName  String?
   fileType  String?
   fileSize  Int?
   tags      String[]
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
   chunks    KnowledgeChunk[]
 
   @@index([orgId])
@@ -62,9 +67,9 @@ model KnowledgeArticle {
 }
 
 model KnowledgeChunk {
-  id        String            @id @default(uuid())
+  id        String                      @id @default(uuid())
   articleId String
-  article   KnowledgeArticle  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  article   KnowledgeArticle            @relation(fields: [articleId], references: [id], onDelete: Cascade)
   index     Int
   body      String
   embedding Unsupported("vector(384)")?
@@ -73,26 +78,64 @@ model KnowledgeChunk {
 }
 
 model Channel {
-  id         String       @id @default(uuid())
-  orgId      String
-  channel    ChannelType
-  identifier String
-  isActive   Boolean      @default(true)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id                 String           @id @default(uuid())
+  orgId              String
+  channel            ChannelType
+  identifier         String
+  // Bring your own Telegram bots (spec 0003). Every column from here to
+  // botTokenAuthTag is null on an email row, which is the marker that a row is
+  // not a Telegram channel.
+  displayName        String?
+  telegramBotId      String?          @unique
+  botTokenCiphertext String?
+  botTokenIv         String?
+  botTokenAuthTag    String?
+  webhookSecret      String?
+  status             ChannelStatus    @default(NEEDS_SETUP)
+  statusMessage      String?
+  statusCheckedAt    DateTime?
+  isActive           Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  tickets            Ticket[]
+  ingestionEvents    IngestionEvent[]
 
   @@unique([orgId, channel, identifier])
   @@index([orgId])
+  // Inbound webhook lookups resolve the sending bot by its own secret.
+  @@index([webhookSecret])
+}
+
+// Audit trail for credential changes. channelId carries no foreign key so the
+// record survives the channel being deleted. No token is ever stored here.
+model ChannelAudit {
+  id          String             @id @default(uuid())
+  channelId   String?
+  orgId       String
+  botUsername String
+  action      ChannelAuditAction
+  actorId     String
+  createdAt   DateTime           @default(now())
+
+  @@index([orgId])
+  @@index([channelId])
 }
 
 model IngestionEvent {
-  id         String   @id @default(uuid())
+  id         String      @id @default(uuid())
   channel    ChannelType
   externalId String
+  // Telegram numbers messages per chat, so two bots in two organizations both
+  // hand you a message_id of 5. The old pair (channel, externalId) collapsed
+  // those two bots into one and silently dropped the second, so it is replaced
+  // rather than kept alongside. channelId is nullable until the tighten phase,
+  // so the backfill has somewhere to write from.
+  channelId  String?
+  channelRef Channel?    @relation(fields: [channelId], references: [id], onDelete: Cascade)
   ticketId   String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime    @default(now())
 
-  @@unique([channel, externalId])
+  @@unique([channelId, externalId])
 }
 
 enum KnowledgeSource {
@@ -127,4 +170,17 @@ enum TicketType {
 enum ChannelType {
   EMAIL
   TELEGRAM
+}
+
+enum ChannelStatus {
+  NEEDS_SETUP
+  PENDING
+  ACTIVE
+  ERROR
+}
+
+enum ChannelAuditAction {
+  CONNECT
+  ROTATE
+  DELETE
 }
