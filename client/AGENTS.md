@@ -17,6 +17,7 @@ The React front end. A Create React App 5 app on React 18, with Clerk handling s
 | `src/components/dashboard/dashboard-sidebar.jsx` | `NAV_ITEMS`. Adding a page means adding an entry here |
 | `src/hooks/use-tickets.js` | The one ticket data hook. Holds the priority grouped response as it comes back, with a request key guard against out of order responses |
 | `src/hooks/use-knowledge-articles.js` | The knowledge base hook. Lists org articles and owns the upload state, same request key guard |
+| `src/hooks/use-channels.js` | The channels hook. Lists org channels, and owns connect, rotate, and test send alongside the CRUD calls |
 | `src/pages/settings.jsx` | Organization settings. Admin only, and its Knowledge base tab is the only section so far |
 | `src/actions/*.js` | One file per API call. The only files that call `fetch` |
 | `src/components/landing/*` | The public marketing page, all of it static |
@@ -46,7 +47,8 @@ npm test       # Jest, in watch mode, and there is nothing to run
 ## Gotchas
 
 - **`REACT_APP_API_BASE_URL` falls back to a live production host.** `src/lib/constants.js` defaults it to a Railway URL, so forgetting the variable sends a development Clerk token to a real deployment. Set it in `client/.env.local`; the root README does not mention it.
-- **Client actions throw away the server's error message.** They do `if (!response.ok) throw new Error("Failed to ...")` and never read the body, so `ApiError` details and zod issues never reach the user. Generic toasts are the reason. `actions/upload-knowledge-document.js` is the exception, it reads `body.error` because every upload rejection (413, 415, 422) is user actionable. Follow it for anything with a message worth showing.
+- **Client actions throw away the server's error message.** They do `if (!response.ok) throw new Error("Failed to ...")` and never read the body, so `ApiError` details and zod issues never reach the user. Generic toasts are the reason. `actions/upload-knowledge-document.js` and `actions/channels.js` are the exceptions, both read `body.error` because every rejection they can hit is user actionable. Follow them for anything with a message worth showing.
+- **A Telegram bot is added by pasting a token, never by typing a username.** The server asks Telegram who the bot is, so `createChannel` takes `{ channel: 'TELEGRAM', botToken }` for Telegram and `{ channel: 'EMAIL', identifier }` for email. The channels form switches its input on the type select, and `channels-tab.jsx` holds that branch.
 - **axios is installed and never used.** Do not reach for it in a new action.
 - **The client is ESM `import` only,** while the server is CommonJS. The root rule against mixing them is the thing to watch here.
 - **A `.dark` block and a Tailwind `darkMode: ["class"]` setting exist, but no toggle is wired.** Do not assume dark mode is reachable.

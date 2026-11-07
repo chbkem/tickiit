@@ -28,7 +28,7 @@ const DashboardSidebar = () => {
   return (
     <aside
       className={cn(
-        'flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-[#f0f0f0] text-sidebar-foreground transition-[width] duration-300',
+        'flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300',
         collapsed ? 'w-16' : 'w-64'
       )}
     >

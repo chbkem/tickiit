@@ -1,6 +1,7 @@
 import { useAuth, useOrganization } from '@clerk/react';
-import { LuBookOpen, LuSettings } from 'react-icons/lu';
+import { LuBookOpen, LuSettings, LuMail } from 'react-icons/lu';
 import { EmptyState, Spinner, Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui';
+import ChannelsTab from '../components/settings/channels-tab';
 import KnowledgeBaseTab from '../components/settings/knowledge-base-tab';
 
 const Settings = () => {
@@ -34,7 +35,7 @@ const Settings = () => {
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 overflow-y-auto px-6 py-8">
+    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 px-6 py-8">
       <header>
         <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -52,9 +53,16 @@ const Settings = () => {
             <LuBookOpen className="h-4 w-4" />
             Knowledge base
           </TabsTrigger>
+          <TabsTrigger value="channels" className="px-3 py-2">
+            <LuMail className="h-4 w-4" />
+            Channels
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="knowledge" className="p-0 pt-6">
           <KnowledgeBaseTab />
+        </TabsContent>
+        <TabsContent value="channels" className="p-0 pt-6">
+          <ChannelsTab />
         </TabsContent>
       </Tabs>
     </div>

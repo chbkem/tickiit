@@ -77,6 +77,10 @@ const persistTicket = async ({ draft, ctx }) =>
       ...enforceCleanDraft(draft),
       source: ctx.channel,
       orgId: ctx.orgId,
+      // Bring your own Telegram bots (spec 0003): the channel row is what reply
+      // dispatch resolves to get the ticket's own bot token. Null for web and
+      // email intake, which have no bot.
+      channelId: ctx.channelId ?? null,
       requesterId: ctx.identity.requesterId,
       requesterName: ctx.identity.requesterName,
       requesterEmail: ctx.identity.requesterEmail,
@@ -155,6 +159,7 @@ const runTriage = async ({ input, deps = {} }) => {
     identity,
     orgId: normalized.orgId,
     channel: normalized.channel,
+    channelId: input.channelId ?? null,
     prisma: deps.prisma ?? prisma,
     clerkClient: deps.clerkClient ?? clerkClient,
     ticketService: deps.ticketService ?? ticketService,

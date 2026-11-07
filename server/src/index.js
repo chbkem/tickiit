@@ -5,10 +5,13 @@ const helmet = require("helmet");
 const ticketsRouter = require("./routes/tickets");
 const aiTriageRouter = require("./routes/aiTriage");
 const kbRouter = require("./routes/kb");
+const channelsRouter = require("./routes/channels");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 const { clerkMiddleware } = require("@clerk/express");
 const logger = require("./lib/logger");
 const { createLimiter } = require("./middleware/rateLimit");
+const { assertChannelConfig } = require("./config/channels");
+const channelService = require("./services/channelService");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -64,6 +67,7 @@ app.get("/", (req, res) => {
 app.use("/api/tickets", ticketsRouter);
 app.use("/api/ai/triage", aiTriageRouter);
 app.use("/api/kb", kbRouter);
+app.use("/api/channels", channelsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -71,3 +75,42 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
 });
+
+/**
+ * Telegram channel startup checks (spec 0003).
+ *
+ * A present but malformed CHANNEL_ENCRYPTION_KEY or CHANNEL_PUBLIC_BASE_URL
+ * throws here rather than at the first connect attempt, because a value that
+ * exists and is wrong is a misconfiguration. A missing one only warns: the rest
+ * of the API works without it, and the token endpoints answer 503 with a clear
+ * message.
+ *
+ * The decrypt sweep then marks any channel stranded by a rotated key as ERROR,
+ * so a key change is visible in the dashboard rather than discovered on the
+ * next reply.
+ */
+const channelStartup = async () => {
+  try {
+    const { encryptionKey, missing } = assertChannelConfig();
+    if (missing.length > 0) {
+      logger.warn(
+        `Telegram bot channels are not fully configured: ${missing.join(", ")} not set. ` +
+          "Email intake is unaffected; connecting a Telegram bot will fail until these are set.",
+      );
+      return;
+    }
+
+    const marked = await channelService.sweepUndecryptableChannels({ key: encryptionKey });
+    if (marked > 0) {
+      logger.warn(
+        `${marked} Telegram channel(s) were marked ERROR because their stored token could not be decrypted with the current CHANNEL_ENCRYPTION_KEY.`,
+      );
+    }
+  } catch (error) {
+    logger.error("Channel configuration is invalid; Telegram bot channels are disabled", {
+      errorMessage: error.message,
+    });
+  }
+};
+
+channelStartup();
