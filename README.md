@@ -88,6 +88,7 @@ This starts the client on http://localhost:3000 and the server on http://localho
 | `CLERK_PUBLISHABLE_KEY` | ✅ | Clerk publishable key (server) |
 | `CLERK_SECRET_KEY` | ✅ | Clerk secret key (server) |
 | `REACT_APP_CLERK_PUBLISHABLE_KEY` | ✅ | Clerk publishable key (client) |
+| `REACT_APP_API_BASE_URL` | | Backend origin the client calls. Defaults to `http://localhost:5000` in dev; set it to your deployed API origin for production builds (inlined by CRA at build time) |
 | `PORT` | | API port, defaults to `5000` |
 | `NODE_ENV` | | `development` or `production` |
 | `CORS_ORIGINS` | | Comma-separated frontend origins; defaults to `http://localhost:3000,http://127.0.0.1:3000` |

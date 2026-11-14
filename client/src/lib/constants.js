@@ -1,4 +1,8 @@
-export const API_BASE_URL = 'https://tickiit-production.up.railway.app';
+// Set REACT_APP_API_BASE_URL to point the client at a deployed API. When it is
+// unset (local dev), fall back to the server directory's port (see server/.env).
+export const API_BASE_URL = (
+  process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'
+).replace(/\/+$/, '');
 
 export const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low' },
