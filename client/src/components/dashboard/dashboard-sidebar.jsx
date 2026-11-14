@@ -4,6 +4,7 @@ import { OrganizationSwitcher, UserButton } from '@clerk/react';
 import {
   LuLayoutDashboard,
   LuTicket,
+  LuClipboardList,
   LuBell,
   LuSettings,
   LuChevronLeft,
@@ -15,6 +16,7 @@ import { cn } from '../../lib/utils';
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/dashboard', icon: LuLayoutDashboard },
   { label: 'Tickets', to: '/dashboard/tickets', icon: LuTicket },
+  { label: 'Forms', to: '/dashboard/forms', icon: LuClipboardList },
   { label: 'Notifications', to: '/dashboard/notifications', icon: LuBell },
   { label: 'Settings', to: '/dashboard/settings', icon: LuSettings },
 ];

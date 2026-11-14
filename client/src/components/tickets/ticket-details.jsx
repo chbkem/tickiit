@@ -178,7 +178,7 @@ const TicketDetails = ({ ticket, onTicketUpdated, onClose }) => {
             onToggleEdit={() => setEditing((value) => !value)}
             onClose={onClose}
             createdAt={ticket.createdAt}
-            creatorName={resolvePerson(ticket.requesterId)}
+            creatorName={ticket.requesterName || resolvePerson(ticket.requesterId)}
             ticketId={ticket.id}
             idLabel={idLabel}
           />

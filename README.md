@@ -20,6 +20,7 @@ tickiit is an open-source support ticketing dashboard that helps your team captu
 - **Clerk authentication** — passwordless-first sign in/sign up with organizations and roles out of the box
 - **Full ticket lifecycle** — create, assign, edit, and delete tickets with statuses (Open, In Progress, On Hold, Resolved, Closed), priorities (Low → Urgent), and types (Task, Bug, Incident, Request)
 - **Comments** — per-ticket discussion thread
+- **Shareable ticket forms** — org admins create form links; customers submit name, email, subject, and message from a public URL, and each submission becomes a ticket
 - **Lifecycle timestamps** — `resolvedAt` / `closedAt` are tracked and cleared automatically when status changes
 - **AI triage ingestion** — `POST /api/ai/triage` turns messy inbound complaints into clean ticket drafts automatically (see [AI triage](#ai-triage))
 - **Sequential ticket numbers** — `#0001`, `#0002`, … allocated safely with Postgres advisory locks
@@ -61,7 +62,10 @@ Create `client/.env.local`:
 
 ```
 REACT_APP_CLERK_PUBLISHABLE_KEY=pk_test_...
+REACT_APP_PUBLIC_URL=http://localhost:3000
 ```
+
+`REACT_APP_PUBLIC_URL` is optional locally (the client falls back to `window.location.origin`) and should be set to the public origin in production so shared form links are absolute.
 
 Use the **publishable** key from the same Clerk application as the server.
 
@@ -88,6 +92,8 @@ This starts the client on http://localhost:3000 and the server on http://localho
 | `CLERK_PUBLISHABLE_KEY` | ✅ | Clerk publishable key (server) |
 | `CLERK_SECRET_KEY` | ✅ | Clerk secret key (server) |
 | `REACT_APP_CLERK_PUBLISHABLE_KEY` | ✅ | Clerk publishable key (client) |
+| `REACT_APP_PUBLIC_URL` | | Origin customers use to open a public form (client). Defaults to `window.location.origin` |
+| `APP_PUBLIC_URL` | | Same public origin on the server; used to return absolute share links from `POST /api/forms` |
 | `REACT_APP_API_BASE_URL` | | Backend origin the client calls. Defaults to `http://localhost:5000` in dev; set it to your deployed API origin for production builds (inlined by CRA at build time) |
 | `PORT` | | API port, defaults to `5000` |
 | `NODE_ENV` | | `development` or `production` |
@@ -97,6 +103,10 @@ This starts the client on http://localhost:3000 and the server on http://localho
 | `GOOGLE_GENERATIVE_AI_API_KEY` | | Google AI API key for triage (`GEMINI_API_KEY` also accepted) |
 | `AI_MODEL` | | Gemini model id, defaults to `gemini-3.8-flash` |
 | `AI_AUTO_REPLY` | | `true` to enable customer draft replies by default; `false`/unset off unless a request passes `autoReply: true` |
+| `SMTP_HOST` / `SMTP_FROM` | | SMTP host and From address for public-form confirmation emails. Unset ⇒ tickets are still created and `confirmationSent` is `false` |
+| `SMTP_PORT` / `SMTP_SECURE` | | SMTP port and TLS mode; defaults to `587` and `false` (`true` is implied for port `465`) |
+| `SMTP_USER` / `SMTP_PASS` | | SMTP credentials. Omit both for an unauthenticated relay |
+| `SMTP_FROM_NAME` | | Optional display name for the From header |
 
 Generate a random `AI_INGEST_TOKEN` with the built-in helper:
 
@@ -115,6 +125,18 @@ The compose file mounts `server/.env` and `client/.env.local`, forwards ports `3
 ```bash
 docker build -t tickiit .
 ```
+
+## Ticket forms
+
+Organization admins can create a public intake form from **Dashboard → Forms**. The shareable URL looks like `https://your-app.example/f/<publicId>` and requires no sign-in.
+
+The form collects **name**, **email**, **subject**, and **message**. On submit the API:
+
+1. resolves the customer to a deterministic requester key (hashed email, same scheme as AI triage),
+2. creates an `OPEN` / `MEDIUM` / `TASK` ticket with `source: "FORM"` and the form's `orgId`,
+3. sends a best-effort SMTP confirmation and returns `confirmationSent` in the response.
+
+Submissions are rate limited per IP and screened with a honeypot field plus a minimum fill time. If SMTP is not configured or the send fails, the ticket is still created and the failure is logged.
 
 ## AI triage
 
@@ -157,6 +179,12 @@ All endpoints are served under the API root and JSON only.
 - `PATCH /api/tickets/:id` — update fields; manages resolver/closer timestamps *(Clerk session required)*
 - `DELETE /api/tickets/:id` — delete a ticket *(Clerk session required; org tickets require admin)*
 - `GET/POST /api/tickets/:ticketId/comments` — list or add comments *(Clerk session required)*
+- `GET /api/forms` — list the active organization's ticket forms *(Clerk session + org admin required)*
+- `POST /api/forms` — create a form and return its shareable URL *(Clerk session + org admin required)*
+- `PATCH /api/forms/:id` — rename, re-describe, enable, or disable a form *(Clerk session + org admin required)*
+- `DELETE /api/forms/:id` — delete a form; its link stops working *(Clerk session + org admin required)*
+- `GET /api/public/forms/:publicId` — public form metadata *(no auth)*
+- `POST /api/public/forms/:publicId/submit` — create a ticket from a public form *(no auth; rate limited + honeypot)*
 - `POST /api/ai/triage` — AI triage ingest *(ingest token required)*
 
 ## Scripts

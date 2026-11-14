@@ -20,6 +20,7 @@ model Ticket {
   requesterKey   String?
   assigneeId     String?
   orgId          String?
+  formId         String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   resolvedAt     DateTime?
@@ -30,6 +31,22 @@ model Ticket {
 
   @@index([requesterKey])
   @@index([orgId, assigneeId, status])
+  @@index([formId])
+}
+
+model TicketForm {
+  id          String   @id @default(uuid())
+  publicId    String   @unique
+  name        String
+  description String?
+  orgId       String
+  orgName     String?
+  createdBy   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([orgId])
 }
 
 model Comment {

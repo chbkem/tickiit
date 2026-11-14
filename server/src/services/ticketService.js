@@ -17,13 +17,16 @@ const findTicketById = (id, { include = true } = {}) =>
   });
 
 const createTicket = async ({ data }) =>
-  prisma.$transaction(async (tx) => {
-    const ticketNumber = await getNextTicketNumber(tx);
-    return tx.ticket.create({
-      data: { ...data, ticketNumber },
-      include: INCLUDE_COMMENTS,
-    });
-  });
+  prisma.$transaction(
+    async (tx) => {
+      const ticketNumber = await getNextTicketNumber(tx);
+      return tx.ticket.create({
+        data: { ...data, ticketNumber },
+        include: INCLUDE_COMMENTS,
+      });
+    },
+    { maxWait: 10000, timeout: 15000 },
+  );
 
 const applyLifecycleTimestamps = (data, existing) => {
   if (data.status && data.status !== existing.status) {

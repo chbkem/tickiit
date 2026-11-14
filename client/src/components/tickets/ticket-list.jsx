@@ -215,7 +215,8 @@ const TicketList = ({ tickets, onOpenCreate }) => {
                         }
                       }
                       const requesterName = orgId
-                        ? resolvePerson(
+                        ? ticket.requesterName ||
+                          resolvePerson(
                             ticket.requesterId ?? ticket.requester ?? ticket.createdBy ?? ticket.creator ?? ticket.user
                           )
                         : '';

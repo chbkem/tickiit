@@ -5,6 +5,8 @@ import AllTicket from './pages/all-ticket';
 import CreateTicket from './pages/create-ticket';
 import EditTicket from './pages/edit-ticket';
 import Tickets from './pages/tickets';
+import Forms from './pages/forms';
+import PublicForm from './pages/public-form';
 import Notifications from './pages/notifications';
 import Settings from './pages/settings';
 import DashboardShell from './components/dashboard/dashboard-shell';
@@ -15,6 +17,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path='/' element={<Landing />} />
+          <Route path='/f/:publicId' element={<PublicForm />} />
           <Route path='/dashboard' element={
             <Show when="signed-in">
               <DashboardShell />
@@ -24,6 +27,7 @@ function App() {
             <Route path='create-ticket' element={<CreateTicket />} />
             <Route path='edit-ticket/:id' element={<EditTicket />} />
             <Route path='tickets' element={<Tickets />} />
+            <Route path='forms' element={<Forms />} />
             <Route path='notifications' element={<Notifications />} />
             <Route path='settings' element={<Settings />} />
           </Route>

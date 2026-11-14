@@ -4,6 +4,15 @@ export const API_BASE_URL = (
   process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'
 ).replace(/\/+$/, '');
 
+const CONFIGURED_PUBLIC_URL = (process.env.REACT_APP_PUBLIC_URL || '').replace(/\/+$/, '');
+
+export const getPublicBaseUrl = () => {
+  if (CONFIGURED_PUBLIC_URL) return CONFIGURED_PUBLIC_URL;
+  return typeof window !== 'undefined' ? window.location.origin : '';
+};
+
+export const buildFormUrl = (publicId) => `${getPublicBaseUrl()}/f/${publicId}`;
+
 export const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
