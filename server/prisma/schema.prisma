@@ -7,35 +7,46 @@ datasource db {
 }
 
 model Ticket {
-  id               String     @id @default(uuid())
-  ticketNumber     String     @unique
-  subject          String
-  description      String?
-  status           Status     @default(OPEN)
-  priority         Priority   @default(MEDIUM)
-  type             TicketType @default(TASK)
-  requesterId      String
-  requesterName    String?
-  requesterEmail   String?
-  requesterKey     String?
-  assigneeId       String?
-  orgId            String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  resolvedAt       DateTime?
-  closedAt         DateTime?
-  dueAt            DateTime?
-  source           String
-  channelRecipient String?
-  // Bring your own Telegram bots (spec 0003). Null on web and email tickets, and
-  // on Telegram tickets whose channel row was deleted (SetNull keeps the ticket).
-  channelId        String?
-  channel          Channel?   @relation(fields: [channelId], references: [id], onDelete: SetNull)
-  comments         Comment[]
+  id             String     @id @default(uuid())
+  ticketNumber   String     @unique
+  subject        String
+  description    String?
+  status         Status     @default(OPEN)
+  priority       Priority   @default(MEDIUM)
+  type           TicketType @default(TASK)
+  requesterId    String
+  requesterName  String?
+  requesterEmail String?
+  requesterKey   String?
+  assigneeId     String?
+  orgId          String?
+  formId         String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  resolvedAt     DateTime?
+  closedAt       DateTime?
+  dueAt          DateTime?
+  source         String
+  comments       Comment[]
 
   @@index([requesterKey])
   @@index([orgId, assigneeId, status])
-  @@index([channelId])
+  @@index([formId])
+}
+
+model TicketForm {
+  id          String   @id @default(uuid())
+  publicId    String   @unique
+  name        String
+  description String?
+  orgId       String
+  orgName     String?
+  createdBy   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([orgId])
 }
 
 model Comment {

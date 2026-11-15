@@ -270,7 +270,8 @@ const TicketList = ({ tickets, loading, error, onRetry, onOpenCreate, onTicketDe
                         }
                       }
                       const requesterName = orgId
-                        ? resolvePerson(
+                        ? ticket.requesterName ||
+                          resolvePerson(
                             ticket.requesterId ?? ticket.requester ?? ticket.createdBy ?? ticket.creator ?? ticket.user
                           )
                         : '';

@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const ticketsRouter = require("./routes/tickets");
+const formsRouter = require("./routes/forms");
+const publicFormsRouter = require("./routes/publicForms");
 const aiTriageRouter = require("./routes/aiTriage");
 const kbRouter = require("./routes/kb");
 const channelsRouter = require("./routes/channels");
@@ -65,6 +67,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/tickets", ticketsRouter);
+app.use("/api/forms", formsRouter);
+app.use("/api/public/forms", publicFormsRouter);
 app.use("/api/ai/triage", aiTriageRouter);
 app.use("/api/kb", kbRouter);
 app.use("/api/channels", channelsRouter);

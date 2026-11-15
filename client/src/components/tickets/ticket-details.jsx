@@ -200,7 +200,7 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
             isDeleting={isDeletingTicket}
             onClose={onClose}
             createdAt={ticket.createdAt}
-            creatorName={resolvePerson(ticket.requesterId)}
+            creatorName={ticket.requesterName || resolvePerson(ticket.requesterId)}
             ticketId={ticket.id}
             idLabel={idLabel}
           />
