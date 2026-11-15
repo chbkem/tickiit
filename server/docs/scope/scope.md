@@ -1,0 +1,74 @@
+# Scope
+
+**Build approach:** Tracer Bullet (build a thin end to end slice first, then expand).
+**Workflow:** Alpha (runs /check verify after develop).
+
+## At a glance
+
+| Feature | Status | Spec | Latest |
+|---|---|---|---|
+| Knowledge base for the AI triage pipeline | in-progress | [0001](../specs/0001-ai-knowledge-base/index.md) | 2026-09-25 |
+| Omnichannel ticket intake | in-progress | [0002](../specs/0002-omnichannel-ticket-intake.md) | 2026-10-01 |
+| Bring your own Telegram bots | in-progress | [0003](../specs/0003-bring-your-own-telegram-bots/index.md) | 2026-10-02 |
+
+## Features
+
+### Knowledge base for the AI triage pipeline
+
+Intent: give the AI an admin managed, org scoped knowledge source it can answer from when it drafts comment replies and triages tickets. Admins write articles or upload txt, md, PDF, and Word files that become locally embedded chunks searched with pgvector.
+
+Done when: admins can manage articles and uploads, retrieval is org scoped, the triage agent reads knowledge, and a signed in member gets draft reply suggestions that are grounded in retrieved facts and never auto post.
+
+Code in: `server/prisma/schema.prisma`, `server/prisma/sql/`, `server/src/utils/fileFormats.js`, `server/src/routes/kb.js`, `server/src/controllers/kb.js`, `server/src/validators/kbSchemas.js`, `server/src/middleware/kbUpload.js`, `server/src/middleware/requireKnowledgeAdmin.js`, `server/src/config/knowledge.js`, `server/src/ai/knowledge/knowledgeService.js`
+
+- [x] Design it (spec), links [0001](../specs/0001-ai-knowledge-base/index.md)
+- [ ] Build it: /develop ai-knowledge-base
+  - [x] Slice 1: Prisma models plus pgvector migration, satisfies AC-1, AC-5
+  - [x] Slice 2: chunker, embedder, and retriever with tag fallback, satisfies AC-4, AC-5, AC-9
+  - [x] Slice 3: KB admin API and uploads with extraction and failure handling (2026-09-25), satisfies AC-1, AC-2, AC-3
+  - [ ] Slice 4: search_knowledge tool and the comment reply draft endpoint, satisfies AC-6, AC-7, AC-8
+  - [ ] Slice 5: admin knowledge base page, suggest reply button, and logging, satisfies AC-1, AC-7, AC-10
+- [ ] Verify it: /check verify ai-knowledge-base
+- [ ] Test it: /test ai-knowledge-base
+
+## Phase 2: Omnichannel intake
+
+### 2. Omnichannel ticket intake
+
+Intent: let users send in tickets from email and Telegram. Messages become tickets in the same pipeline, with the same triage and knowledge base grounding.
+
+Done when: an email or Telegram message creates a ticket, the sender is identified and linked, and the ticket flows through the same triage and reply pipeline as web created tickets.
+
+Code in: `server/prisma/schema.prisma`, `server/src/routes/channels.js`, `server/src/controllers/channels.js`, `server/src/controllers/emailWebhook.js`, `server/src/controllers/telegramWebhook.js`, `server/src/services/channelService.js`, `server/src/services/ingestionService.js`, `server/src/services/replyDispatcher.js`, `server/src/services/emailService.js`, `server/src/services/telegramService.js`, `server/src/middleware/channelWebhookAuth.js`, `server/src/validators/channelSchemas.js`, `server/src/channels/smtpServer.js`, `client/src/actions/channels.js`, `client/src/hooks/use-channels.js`, `client/src/components/settings/channels-tab.jsx`
+
+- [x] Design it (spec), links [0002](../specs/0002-omnichannel-ticket-intake/index.md)
+- [x] Build it: /develop omnichannel-ticket-intake
+  - [x] Slice 1: Email end to end (data model, webhook, SMTP integration, reply dispatch), satisfies AC-1, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-10
+  - [x] Slice 2: Telegram end to end (webhook, reply dispatch), satisfies AC-2, AC-3, AC-4, AC-6, AC-7, AC-9
+  - [x] Slice 3: Channel management (CRUD endpoints, admin UI), satisfies AC-8
+- [ ] Verify it: /check verify omnichannel-ticket-intake
+
+### 3. Bring your own Telegram bots (from spec 0003)
+
+Intent: move the Telegram bot credentials off the instance and onto the organization's own channel row, so any admin can bring their own bot by pasting a token and the server does the rest.
+
+Done when: an admin pastes a token, the server registers the webhook and confirms the bot, inbound updates are authenticated per bot, replies go out through that bot's own token, a broken token is visible and recoverable, and several organizations each run their own bot.
+
+Supersedes the Telegram configuration half of spec 0002. Email intake is untouched.
+
+Code in: `server/prisma/schema.prisma`, `server/prisma/sql/backfill-channel-links.sql`, `server/src/config/channels.js`, `server/src/utils/secretCrypto.js`, `server/src/services/telegramService.js`, `server/src/services/channelService.js`, `server/src/services/replyDispatcher.js`, `server/src/controllers/channels.js`, `server/src/controllers/telegramWebhook.js`, `server/src/routes/channels.js`, `server/src/validators/channelSchemas.js`, `server/src/middleware/channelWebhookAuth.js`, `server/src/index.js`, `server/.env.example`, `client/src/actions/channels.js`, `client/src/hooks/use-channels.js`, `client/src/components/settings/channels-tab.jsx`
+
+- [x] Design it (spec), links [0003](../specs/0003-bring-your-own-telegram-bots/index.md)
+- [ ] Build it: /develop bring-your-own-telegram-bots
+  - [x] Milestone 1: schema, encryption helper, and backfill, satisfies AC-3, AC-10, AC-12
+  - [x] Milestone 2: one bot end to end, connect, register, inbound, reply, satisfies AC-1, AC-2, AC-3, AC-4, AC-5, AC-7, AC-8, AC-12
+  - [x] Milestone 3: rotation, health status, audit trail, test send, env var removal, satisfies AC-6, AC-9, AC-10, AC-11
+  - [x] Milestone 4: Channels tab rework with token form, status column, and test button, satisfies AC-1, AC-6, AC-9, AC-11
+- [ ] Verify it: /check verify bring-your-own-telegram-bots
+
+## Deferred
+
+- [ ] Omnichannel intake: consider moving to the async PgBoss architecture (from AI_LAYER_PLAN.md) when message volume grows
+- [ ] Omnichannel intake: consider cross channel sender linking as a v2 feature
+- [ ] Omnichannel intake: consider attachment support as a v2 feature
+- [ ] Omnichannel intake: consider a retry mechanism for failed IngestionEvents as a v2 feature

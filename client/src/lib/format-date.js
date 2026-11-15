@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 
-const DATE_FORMAT = 'MM/dd/yyyy';
-const DATE_TIME_FORMAT = 'MM/dd/yyyy h:mm a';
+const DATE_FORMAT = 'dd MMM yy';
+const DATE_TIME_FORMAT = "dd MMM yy 'at' HH:mm";
 
 function toValidDate(value) {
   const date = value instanceof Date ? value : new Date(value);
