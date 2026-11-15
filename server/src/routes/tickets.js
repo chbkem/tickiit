@@ -6,6 +6,7 @@ const requireAuth = require("../middleware/requireAuth");
 const { createLimiter } = require("../middleware/rateLimit");
 const {
   idParamSchema,
+  listTicketsQuerySchema,
   createTicketSchema,
   updateTicketSchema,
 } = require("../validators/ticketSchemas");
@@ -20,7 +21,7 @@ const writeLimiter = createLimiter({
 
 router.use(requireAuth);
 
-router.get("/", ticketsController.getTickets);
+router.get("/", validate(listTicketsQuerySchema), ticketsController.getTickets);
 router.get("/:id", validate(idParamSchema), ticketsController.getTicketById);
 router.post("/", writeLimiter, validate(createTicketSchema), ticketsController.createTicket);
 router.patch("/:id", writeLimiter, validate(updateTicketSchema), ticketsController.updateTicket);

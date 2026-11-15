@@ -11,6 +11,9 @@
 # production
 /build
 
+# copied from the altcha package before start/build (see scripts/copy-altcha.js)
+/public/altcha.umd.js
+
 # misc
 .DS_Store
 .env.local

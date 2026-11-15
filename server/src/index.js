@@ -10,9 +10,25 @@ const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 const { clerkMiddleware } = require("@clerk/express");
 const logger = require("./lib/logger");
 const { createLimiter } = require("./middleware/rateLimit");
+const { assertSpamSecrets } = require("./spam/config");
+const { startRetentionSchedule } = require("./services/retentionService");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+/**
+ * TRUST_PROXY — a hop count or `true`/`false`. Required when the API sits
+ * behind a proxy, otherwise req.ip is the proxy address and both the IP rate
+ * limit and the IP blocklist silently stop working.
+ */
+const resolveTrustProxy = () => {
+  const raw = (process.env.TRUST_PROXY || "").trim();
+  if (raw === "") return false;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  const hops = Number(raw);
+  return Number.isInteger(hops) && hops >= 0 ? hops : raw;
+};
 
 const configureCors = () => {
   const configuredOrigins = (process.env.CORS_ORIGINS || "")
@@ -33,6 +49,14 @@ const configureCors = () => {
 
 app.use(helmet());
 app.use(configureCors());
+app.set("trust proxy", resolveTrustProxy());
+if (process.env.NODE_ENV === "production" && (process.env.TRUST_PROXY || "").trim() === "") {
+  logger.warn(
+    "TRUST_PROXY is not set in production. If the API is behind a proxy, req.ip " +
+      "is the proxy address and the IP rate limit and IP blocklist will not work. " +
+      "Set TRUST_PROXY to the hop count (e.g. 1) or true.",
+  );
+}
 app.use(express.json({ limit: "16kb" }));
 
 const apiLimiter = createLimiter({
@@ -70,6 +94,9 @@ app.use("/api/ai/triage", aiTriageRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+assertSpamSecrets();
+
 app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
+  startRetentionSchedule();
 });

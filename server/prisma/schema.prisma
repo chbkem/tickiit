@@ -27,11 +27,50 @@ model Ticket {
   closedAt       DateTime?
   dueAt          DateTime?
   source         String
+  isSpam         Boolean    @default(false)
+  spamScore      Int        @default(0)
+  spamReasons    String[]   @default([])
+  quarantinedAt  DateTime?
   comments       Comment[]
 
   @@index([requesterKey])
   @@index([orgId, assigneeId, status])
   @@index([formId])
+  @@index([orgId, isSpam, createdAt])
+}
+
+model FormSubmissionAttempt {
+  id          String         @id @default(uuid())
+  formId      String?
+  publicId    String
+  ipHash      String
+  emailHash   String?
+  emailDomain String?
+  bodyHash    String?
+  verdict     AttemptVerdict
+  score       Int            @default(0)
+  reasons     String[]       @default([])
+  ticketId    String?
+  createdAt   DateTime       @default(now())
+
+  @@index([ipHash, createdAt])
+  @@index([emailHash, createdAt])
+  @@index([bodyHash, createdAt])
+  @@index([formId, createdAt])
+  @@index([verdict, createdAt])
+  @@index([createdAt])
+}
+
+model BlocklistEntry {
+  id        String        @id @default(uuid())
+  kind      BlocklistKind
+  value     String
+  reason    String?
+  createdBy String?
+  expiresAt DateTime?
+  createdAt DateTime      @default(now())
+
+  @@unique([kind, value])
 }
 
 model TicketForm {
@@ -78,4 +117,16 @@ enum TicketType {
   BUG
   INCIDENT
   REQUEST
+}
+
+enum AttemptVerdict {
+  ACCEPTED
+  QUARANTINED
+  REJECTED
+}
+
+enum BlocklistKind {
+  EMAIL
+  DOMAIN
+  IP
 }

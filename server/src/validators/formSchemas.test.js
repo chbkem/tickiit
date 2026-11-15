@@ -14,21 +14,18 @@ const validSubmission = {
     subject: "Cannot sign in",
     message: "<p>I get a <b>500</b> error.</p>",
     website: "",
-    elapsedMs: 5000,
+    formToken: "eyJwdWJsaWNJZCI6ImFiYyJ9.signature",
+    altcha: "eyJjaGFsbGVuZ2UiOnt9fQ==",
   },
 };
 
 describe("formSchemas", () => {
-  test("createFormSchema accepts an empty body for one-click creation", () => {
-    const result = createFormSchema.safeParse({ body: {} });
-    assert.equal(result.success, true);
-    assert.deepEqual(result.data.body, {});
-  });
-
-  test("createFormSchema defaults a missing body", () => {
-    const result = createFormSchema.safeParse({});
-    assert.equal(result.success, true);
-    assert.deepEqual(result.data.body, {});
+  test("createFormSchema defaults an empty or missing body for one-click creation", () => {
+    for (const input of [{ body: {} }, {}]) {
+      const result = createFormSchema.safeParse(input);
+      assert.equal(result.success, true);
+      assert.deepEqual(result.data.body, {});
+    }
   });
 
   test("createFormSchema sanitizes and length-limits the name", () => {
@@ -75,6 +72,14 @@ describe("formSchemas", () => {
       body: { ...validSubmission.body, priority: "URGENT" },
     });
     assert.equal(extra.success, false);
+  });
+
+  test("submitFormSchema rejects the removed elapsedMs field", () => {
+    const result = submitFormSchema.safeParse({
+      ...validSubmission,
+      body: { ...validSubmission.body, elapsedMs: 5000 },
+    });
+    assert.equal(result.success, false);
   });
 
   test("submitFormSchema enforces the public id and message limits", () => {

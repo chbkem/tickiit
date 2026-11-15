@@ -102,7 +102,13 @@ const submitFormSchema = z.object({
           .max(5000, "Message must be 5000 characters or fewer."),
       ),
       website: z.string().max(200).optional(),
-      elapsedMs: z.number().int().nonnegative().optional(),
+      // The signed form token and the proof of work payload are optional at the
+      // schema level so the guard can reject them with a specific reason
+      // (bad_form_token / pow_invalid) and record the attempt. `elapsedMs` is
+      // intentionally gone: the schema is strict, so an old client that still
+      // sends it gets a 400 instead of a silently ignored field.
+      formToken: z.string().max(4096).optional(),
+      altcha: z.string().max(20000).optional(),
     })
     .strict(),
 });

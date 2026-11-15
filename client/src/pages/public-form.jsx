@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { LuCheckCircle, LuMail } from 'react-icons/lu';
@@ -6,6 +6,10 @@ import Logo from '../components/logo';
 import { Button, Card, CardContent, CardHeader, Input, Spinner, Textarea } from '../components/ui';
 import { getPublicForm } from '../actions/get-public-form';
 import { submitTicketForm } from '../actions/submit-ticket-form';
+import { API_BASE_URL } from '../lib/constants';
+
+// The <altcha-widget> custom element is registered by the Altcha bundle loaded in
+// public/index.html (copied there from the altcha package before start/build).
 
 const ticketRequestSchema = z.object({
   name: z
@@ -35,7 +39,6 @@ const EMPTY_VALUES = { name: '', email: '', subject: '', message: '' };
 
 const PublicForm = () => {
   const { publicId } = useParams();
-  const startedAt = useRef(Date.now());
 
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,10 +94,19 @@ const PublicForm = () => {
 
     setSubmitting(true);
     try {
+      // The Altcha widget injects a hidden input named "altcha" with the solved
+      // proof of work payload. Read it straight from the form so React never has
+      // to manage the web component's value.
+      const altchaPayload = new FormData(event.currentTarget).get('altcha');
+      if (typeof altchaPayload !== 'string' || altchaPayload === '') {
+        setSubmitError('Please wait for the verification check to finish, then submit again.');
+        return;
+      }
       const response = await submitTicketForm(publicId, {
         ...parsed.data,
         website,
-        elapsedMs: Date.now() - startedAt.current,
+        formToken: form.formToken,
+        altcha: altchaPayload,
       });
       setResult(response);
     } catch (err) {
@@ -162,7 +174,6 @@ const PublicForm = () => {
               setErrors({});
               setSubmitError('');
               setResult(null);
-              startedAt.current = Date.now();
             }}
           >
             Submit another request
@@ -242,6 +253,13 @@ const PublicForm = () => {
               onChange={(event) => setWebsite(event.target.value)}
             />
           </div>
+
+          <altcha-widget
+            challenge={`${API_BASE_URL}/api/public/forms/${publicId}/challenge`}
+            name="altcha"
+            type="checkbox"
+            auto="onload"
+          />
 
           {submitError && (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive" role="alert">

@@ -1,7 +1,7 @@
 # 0001. Harden public form submissions against spam and abuse
 
 **Date**: 2026-11-14
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -126,13 +126,14 @@ A third party challenge was the runner up. It detects bots better per line of co
 | ipHash | string | salted SHA-256 of the client IP |
 | emailHash | string, nullable | lowercased trimmed email, then salted SHA-256 |
 | emailDomain | string, nullable | parsed from the validated email |
+| bodyHash | string, nullable | salted SHA-256 of the normalized message, for cross-email repeat detection (AC-12) |
 | verdict | enum `AttemptVerdict` | `ACCEPTED`, `QUARANTINED`, `REJECTED` |
 | score | int, default 0 | sum of triggered rule weights |
 | reasons | string[] | rule ids such as `honeypot`, `link_cap` |
 | ticketId | string, nullable | set only when a ticket row was created |
 | createdAt | datetime, default now | |
 
-Indexes: `(ipHash, createdAt)`, `(emailHash, createdAt)`, `(formId, createdAt)`, `(verdict, createdAt)`, `(createdAt)` for retention.
+Indexes: `(ipHash, createdAt)`, `(emailHash, createdAt)`, `(bodyHash, createdAt)`, `(formId, createdAt)`, `(verdict, createdAt)`, `(createdAt)` for retention.
 
 `BlocklistEntry` (new)
 

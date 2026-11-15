@@ -6,15 +6,21 @@ const {
   publicIdParamSchema,
   submitFormSchema,
 } = require("../validators/formSchemas");
+const { IP_LIMIT, IP_WINDOW_MS } = require("../spam/spamRules");
 
 const router = express.Router();
 
 const submitLimiter = createLimiter({
-  windowMs: 15 * 60 * 1000,
-  limit: 8,
+  windowMs: IP_WINDOW_MS,
+  limit: IP_LIMIT,
   message: { error: "Too many submissions, please try again later." },
 });
 
+router.get(
+  "/:publicId/challenge",
+  validate(publicIdParamSchema),
+  publicFormsController.getChallenge,
+);
 router.get(
   "/:publicId",
   validate(publicIdParamSchema),

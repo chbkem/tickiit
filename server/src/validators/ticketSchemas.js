@@ -57,6 +57,12 @@ const idParamSchema = z.object({
   }),
 });
 
+const listTicketsQuerySchema = z.object({
+  query: z.object({
+    isSpam: z.enum(["true", "false"]).optional(),
+  }),
+});
+
 const createTicketSchema = z.object({
   body: z
     .object({
@@ -105,6 +111,7 @@ const updateTicketSchema = z.object({
 
 module.exports = {
   idParamSchema,
+  listTicketsQuerySchema,
   createTicketSchema,
   updateTicketSchema,
 };

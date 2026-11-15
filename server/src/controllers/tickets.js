@@ -12,13 +12,19 @@ const {
   assertUserIsAdminInOrganization,
 } = require("../services/clerkService");
 
-const buildListWhere = (userId, orgId) =>
-  orgId ? { orgId } : { OR: [{ requesterId: userId }, { assigneeId: userId }] };
+const buildListWhere = (userId, orgId, isSpam) => {
+  const scope = orgId
+    ? { orgId }
+    : { OR: [{ requesterId: userId }, { assigneeId: userId }] };
+  // Spam (quarantined) tickets are hidden by default; isSpam=true shows only them.
+  return { ...scope, isSpam };
+};
 
 exports.getTickets = asyncHandler(async (req, res) => {
   const { userId, orgId } = getAuth(req);
+  const isSpam = req.query.isSpam === "true";
 
-  const tickets = await ticketService.listTickets(buildListWhere(userId, orgId));
+  const tickets = await ticketService.listTickets(buildListWhere(userId, orgId, isSpam));
 
   const grouped = tickets.reduce((acc, ticket) => {
     const key = ticket.priority.toLowerCase();

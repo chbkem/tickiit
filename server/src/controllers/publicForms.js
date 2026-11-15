@@ -4,8 +4,13 @@ const logger = require("../lib/logger");
 const formService = require("../services/formService");
 const ticketService = require("../services/ticketService");
 const emailService = require("../services/emailService");
+const attemptService = require("../services/attemptService");
 const { resolveRequester } = require("../ai/identity");
-const { isHoneypotFilled, isSubmittedTooFast } = require("../utils/formGuard");
+const { signFormToken } = require("../spam/formToken");
+const { formTokenSecret } = require("../spam/config");
+const { FORM_TOKEN_TTL_MS } = require("../spam/spamRules");
+const { evaluateSubmission } = require("../spam/guard");
+const { createPowChallenge } = require("../spam/altcha");
 
 const DEFAULT_ORG_NAME = "our support team";
 
@@ -14,47 +19,68 @@ const serializePublicForm = (form) => ({
   name: form.name,
   description: form.description,
   orgName: form.orgName ?? DEFAULT_ORG_NAME,
+  formToken: signFormToken(
+    { publicId: form.publicId, issuedAt: Date.now() },
+    formTokenSecret(),
+  ),
 });
 
-exports.getPublicForm = asyncHandler(async (req, res) => {
-  const form = await formService.findActiveFormByPublicId(req.params.publicId);
-  if (!form) {
-    throw new ApiError(404, "This form is no longer available.");
-  }
-  res.json(serializePublicForm(form));
-});
-
-exports.submitPublicForm = asyncHandler(async (req, res) => {
-  const { publicId } = req.params;
-  const { name, email, subject, message, website, elapsedMs } = req.body;
-
-  if (isHoneypotFilled(website)) {
-    logger.warn("Public form submission rejected: honeypot filled", {
-      publicId,
-      ip: req.ip,
-    });
-    throw new ApiError(400, "Submission rejected.");
-  }
-
-  if (isSubmittedTooFast(elapsedMs)) {
-    logger.warn("Public form submission rejected: submitted too quickly", {
-      publicId,
-      ip: req.ip,
-    });
-    throw new ApiError(400, "Submission rejected.");
-  }
-
+const requireActiveForm = async (publicId) => {
   const form = await formService.findActiveFormByPublicId(publicId);
   if (!form) {
     throw new ApiError(404, "This form is no longer available.");
   }
+  return form;
+};
 
-  const identity = await resolveRequester({ name, email });
+exports.getPublicForm = asyncHandler(async (req, res) => {
+  const form = await requireActiveForm(req.params.publicId);
+  res.json(serializePublicForm(form));
+});
+
+exports.getChallenge = asyncHandler(async (req, res) => {
+  await requireActiveForm(req.params.publicId);
+  const challenge = await createPowChallenge();
+  res.json(challenge);
+});
+
+exports.submitPublicForm = asyncHandler(async (req, res) => {
+  const { publicId } = req.params;
+  const body = req.body;
+
+  const form = await requireActiveForm(publicId);
+
+  const decision = await evaluateSubmission({ form, body, ip: req.ip });
+
+  const attemptData = {
+    formId: form.id,
+    publicId: form.publicId,
+    ipHash: decision.ipHash,
+    emailHash: decision.emailHash,
+    emailDomain: decision.emailDomain,
+    bodyHash: decision.bodyHash,
+    verdict: decision.verdict,
+    score: decision.score ?? 0,
+    reasons: decision.reasons ?? [],
+  };
+
+  if (decision.verdict === "REJECTED") {
+    await attemptService.recordAttempt(attemptData);
+    logger.warn("Public form submission rejected", {
+      publicId,
+      reason: decision.reasons[0],
+    });
+    throw new ApiError(decision.status, decision.message);
+  }
+
+  const quarantined = decision.verdict === "QUARANTINED";
+
+  const identity = await resolveRequester({ name: body.name, email: body.email });
 
   const ticket = await ticketService.createTicket({
     data: {
-      subject,
-      description: message,
+      subject: body.subject,
+      description: body.message,
       status: "OPEN",
       priority: "MEDIUM",
       type: "TASK",
@@ -66,14 +92,34 @@ exports.submitPublicForm = asyncHandler(async (req, res) => {
       requesterName: identity.requesterName,
       requesterEmail: identity.requesterEmail,
       assigneeId: null,
+      isSpam: quarantined,
+      spamScore: quarantined ? decision.score : 0,
+      spamReasons: quarantined ? decision.reasons : [],
+      quarantinedAt: quarantined ? new Date() : null,
     },
   });
+
+  await attemptService.recordAttempt({ ...attemptData, ticketId: ticket.id });
+
+  if (quarantined) {
+    logger.warn("Public form submission quarantined", {
+      ticketId: ticket.id,
+      publicId,
+      reasons: decision.reasons,
+      score: decision.score,
+    });
+    return res.status(201).json({
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.subject,
+      confirmationSent: false,
+    });
+  }
 
   let confirmationSent = false;
   try {
     confirmationSent = await emailService.sendTicketConfirmation({
-      to: email,
-      name,
+      to: body.email,
+      name: body.name,
       ticket,
       orgName: form.orgName ?? DEFAULT_ORG_NAME,
     });

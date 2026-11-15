@@ -98,6 +98,10 @@ This starts the client on http://localhost:3000 and the server on http://localho
 | `PORT` | | API port, defaults to `5000` |
 | `NODE_ENV` | | `development` or `production` |
 | `CORS_ORIGINS` | | Comma-separated frontend origins; defaults to `http://localhost:3000,http://127.0.0.1:3000` |
+| `FORM_TOKEN_SECRET` | ✅ (prod) | 32+ random bytes as hex; signs the public-form timing token. Required in production |
+| `ALTCHA_HMAC_KEY` | ✅ (prod) | 32+ random bytes as hex; creates and verifies the self-hosted proof of work. Required in production |
+| `SPAM_IP_SALT` | ✅ (prod) | 32+ random bytes as hex; salts the IP and email hashes in the attempt log. Required in production |
+| `TRUST_PROXY` | | Express `trust proxy` setting (hop count or `true`/`false`). Set it behind a proxy so `req.ip` is the real client and the IP limit/blocklist work |
 | `AI_INGEST_TOKEN` | | Shared secret gating `POST /api/ai/triage`. Unset ⇒ the ingest endpoint is disabled (503) |
 | `AI_PROVIDER` | | Triage provider; `gemini` only for now. Defaults to `gemini` |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | | Google AI API key for triage (`GEMINI_API_KEY` also accepted) |
@@ -136,7 +140,15 @@ The form collects **name**, **email**, **subject**, and **message**. On submit t
 2. creates an `OPEN` / `MEDIUM` / `TASK` ticket with `source: "FORM"` and the form's `orgId`,
 3. sends a best-effort SMTP confirmation and returns `confirmationSent` in the response.
 
-Submissions are rate limited per IP and screened with a honeypot field plus a minimum fill time. If SMTP is not configured or the send fails, the ticket is still created and the failure is logged.
+Submissions are rate limited per IP and screened by a layered server-side guard. Every submission gets one verdict:
+
+- **Accepted** — a normal ticket is created and the confirmation email is sent.
+- **Quarantined** — the ticket is created but hidden (`isSpam: true`), no email is sent, and the response still looks like success so a bot learns nothing. Spam is excluded from `GET /api/tickets` by default.
+- **Rejected** — no ticket is created and the caller gets a `400` or `429`.
+
+The guard runs, in order: blocklist (email, email domain incl. subdomains, and salted IP hash), a server-signed form token that measures fill time (the old client-reported `elapsedMs` is gone), a self-hosted [Altcha](https://altcha.org) proof of work, a honey pot field, per-email duplicate and daily limits, a per-IP quarantine flood cap, and content screening (link count, banned terms, repeated text). The attempt log stores only salted hashes plus the email domain, never the raw IP or email.
+
+If SMTP is not configured or the send fails, the ticket is still created and the failure is logged.
 
 ## AI triage
 
@@ -173,7 +185,7 @@ A ticket is **always** created: if the AI provider is unavailable or a stage fai
 
 All endpoints are served under the API root and JSON only.
 
-- `GET /api/tickets` — list visible tickets (all org-wide tickets when an org is active, else personal), grouped by priority *(Clerk session required)*
+- `GET /api/tickets` — list visible tickets (all org-wide tickets when an org is active, else personal), grouped by priority; spam/quarantined tickets are excluded unless `?isSpam=true` *(Clerk session required)*
 - `GET /api/tickets/:id` — single ticket with comments *(Clerk session required)*
 - `POST /api/tickets` — create a ticket *(Clerk session required; admins may set requester/assignee in an org)*
 - `PATCH /api/tickets/:id` — update fields; manages resolver/closer timestamps *(Clerk session required)*
@@ -183,8 +195,9 @@ All endpoints are served under the API root and JSON only.
 - `POST /api/forms` — create a form and return its shareable URL *(Clerk session + org admin required)*
 - `PATCH /api/forms/:id` — rename, re-describe, enable, or disable a form *(Clerk session + org admin required)*
 - `DELETE /api/forms/:id` — delete a form; its link stops working *(Clerk session + org admin required)*
-- `GET /api/public/forms/:publicId` — public form metadata *(no auth)*
-- `POST /api/public/forms/:publicId/submit` — create a ticket from a public form *(no auth; rate limited + honeypot)*
+- `GET /api/public/forms/:publicId` — public form metadata, including a signed `formToken` *(no auth)*
+- `GET /api/public/forms/:publicId/challenge` — self-hosted proof-of-work challenge for the form *(no auth)*
+- `POST /api/public/forms/:publicId/submit` — create a ticket from a public form; body takes `name`, `email`, `subject`, `message`, `website` (honey pot), `formToken`, and `altcha` *(no auth; rate limited + layered guard)*
 - `POST /api/ai/triage` — AI triage ingest *(ingest token required)*
 
 ## Scripts
@@ -193,6 +206,8 @@ All endpoints are served under the API root and JSON only.
 | --- | --- | --- |
 | root | `npm run dev` | Run client and server concurrently |
 | root | `npm run client` / `npm run server` | Run either side alone |
+| root | `npm test` | Run the server and client test suites |
+| root | `npm run deploy` | Run tests, then build and start the Docker Compose stack |
 | server | `npm start` | Start the API |
 | server | `npm run dev` | Start with file watching |
 | server | `npm test` | Run server unit tests (Node's built-in runner) |
@@ -204,6 +219,8 @@ All endpoints are served under the API root and JSON only.
 
 - **Server** — Node's built-in test runner: `npm test --prefix server`
 - **Client** — Jest (Create React App): `npm test --prefix client`
+
+`npm test` at the repo root runs both suites. GitHub Actions runs the same tests plus a production client build on every push and pull request (`.github/workflows/ci.yml`). `npm run deploy` runs the root test suite first and only then builds and starts the Compose stack, so a failing test blocks a local deploy.
 
 ## Roadmap
 
