@@ -4,7 +4,7 @@ const logger = require("../lib/logger");
 const formService = require("../services/formService");
 const ticketService = require("../services/ticketService");
 const emailService = require("../services/emailService");
-const { resolveRequester } = require("../ai/identity");
+const { resolveRequester } = require("../services/identity");
 const { isHoneypotFilled, isSubmittedTooFast } = require("../utils/formGuard");
 
 const DEFAULT_ORG_NAME = "our support team";

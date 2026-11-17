@@ -8,8 +8,6 @@
     "dev": "node --watch src/index.js",
     "test": "node --test \"src/**/*.test.js\"",
     "token:generate": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
-    "test:api": "node scripts/test-ai-triage.js",
-    "smtp": "node src/channels/smtpServer.js",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",
     "prisma:push": "prisma db push",
