@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/react';
 import { LuArrowLeft } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
 import { createTicket } from '../actions/create-ticket';
+import { friendlyError } from '../lib/error-message';
 import { Button } from '../components/ui';
 
 const CreateTicket = () => {
@@ -12,18 +13,21 @@ const CreateTicket = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const navigate = useNavigate();
 
   const handleCreateTicket = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
+    setSubmitError('');
     setIsSubmitting(true);
     try {
       const token = await getToken();
       await createTicket({ subject: title, description, type: category, assigneeId: userId }, token);
-      toast.success('Ticket created successfully');
+      toast.success('Ticket created');
       navigate('/dashboard');
     } catch (err) {
-      toast.error(err.message || 'Failed to create ticket');
+      console.error(err);
+      setSubmitError(friendlyError(err, 'Failed to create ticket'));
     } finally {
       setIsSubmitting(false);
     }
@@ -69,8 +73,16 @@ const CreateTicket = () => {
               required
             />
           </div>
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? 'Creating...' : 'Create Ticket'}
+          {submitError && (
+            <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              <p>{submitError}</p>
+              <Button size="sm" variant="outline" className="mt-2" onClick={handleCreateTicket}>
+                Try again
+              </Button>
+            </div>
+          )}
+          <Button type="submit" loading={isSubmitting} className="w-full">
+            Create ticket
           </Button>
         </form>
       </div>

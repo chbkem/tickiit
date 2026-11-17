@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../lib/constants';
+import { errorCodeForStatus } from '../lib/error-message';
 
 const readError = async (response, fallback) => {
   const data = await response.json().catch(() => ({}));
@@ -14,7 +15,9 @@ export async function getAllForms(token) {
   });
 
   if (!response.ok) {
-    throw new Error(await readError(response, 'Failed to fetch forms'));
+    const error = new Error(await readError(response, 'Failed to fetch forms'));
+    error.code = errorCodeForStatus(response.status);
+    throw error;
   }
 
   return response.json();

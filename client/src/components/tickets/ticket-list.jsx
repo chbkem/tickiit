@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, useTransition } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@clerk/react';
 import toast from 'react-hot-toast';
@@ -6,20 +6,21 @@ import {
   Badge,
   Button,
   Checkbox,
-  EmptyState,
   Input,
   Select,
-  Spinner,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  ViewState,
 } from '../ui';
-import { LuAlertTriangle, LuClock, LuPlus, LuTicket, LuTrash } from 'react-icons/lu';
+import { TicketListSkeleton } from '../skeletons';
+import { LuClock, LuPlus, LuRefreshCw, LuTicket, LuTrash } from 'react-icons/lu';
 import { deleteTicket } from '../../actions/delete-ticket';
 import { PRIORITY_OPTIONS, TICKET_TYPE_OPTIONS } from '../../lib/constants';
+import { friendlyError } from '../../lib/error-message';
 import { formatTicketDateTime } from '../../lib/format-date';
 import { cn } from '../../lib/utils';
 import { usePersonResolver } from '../../lib/person-name';
@@ -43,8 +44,27 @@ const TicketList = ({ tickets, loading, error, onRetry, onOpenCreate, onTicketDe
   const [typeFilter, setTypeFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [deletingIds, setDeletingIds] = useState(new Set());
+  const [refreshing, setRefreshing] = useState(false);
+  const [filterPending, startFilterTransition] = useTransition();
 
   const activeTicketId = searchParams.get('ticketId');
+
+  const clearFilters = () => {
+    startFilterTransition(() => {
+      setSearch('');
+      setTypeFilter('');
+    });
+  };
+
+  const handleRetry = async () => {
+    if (!onRetry) return;
+    setRefreshing(true);
+    try {
+      await onRetry();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const groupedTickets = useMemo(() => {
     const categories = Object.keys(tickets)
@@ -129,7 +149,8 @@ const TicketList = ({ tickets, loading, error, onRetry, onOpenCreate, onTicketDe
       });
       onTicketDeleted?.(ticketId);
     } catch (err) {
-      toast.error(err.message || 'Failed to delete ticket');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to delete ticket'));
     } finally {
       setDeletingIds((prev) => {
         const next = new Set(prev);
@@ -144,24 +165,30 @@ const TicketList = ({ tickets, loading, error, onRetry, onOpenCreate, onTicketDe
       <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Tickets</h2>
-          <Button size="sm" onClick={onOpenCreate}>
-            <LuPlus className="h-4 w-4" />
-            New ticket
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={handleRetry} loading={refreshing}>
+              <LuRefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+            <Button size="sm" onClick={onOpenCreate}>
+              <LuPlus className="h-4 w-4" />
+              New ticket
+            </Button>
+          </div>
         </div>
         <div className="mt-3 flex gap-2">
           <Input
             id="search"
             type="search"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => startFilterTransition(() => setSearch(e.target.value))}
             placeholder="Search by subject..."
             className="h-8 flex-1"
           />
           <Select
             id="type-filter"
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
+            onChange={(e) => startFilterTransition(() => setTypeFilter(e.target.value))}
             className="h-8 w-36"
           >
             <option value="">All types</option>
@@ -182,41 +209,32 @@ const TicketList = ({ tickets, loading, error, onRetry, onOpenCreate, onTicketDe
         )}
       </div>
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {loading ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-            <Spinner />
-            <p className="text-sm text-muted-foreground">Loading tickets...</p>
-          </div>
-        ) : error ? (
-          <EmptyState
-            icon={<LuAlertTriangle className="h-5 w-5" />}
-            title="Couldn't load tickets"
-            description={`${error} Try again in a moment.`}
-            action={
-              <Button size="sm" variant="outline" onClick={onRetry}>
-                Try again
-              </Button>
-            }
-          />
-        ) : groupedTickets.length === 0 ? (
-          <EmptyState
-            icon={<LuTicket className="h-5 w-5" />}
-            title={search || typeFilter ? 'No matches' : 'No tickets yet'}
-            description={
+        <ViewState
+          state={loading ? 'loading' : error ? 'error' : groupedTickets.length === 0 ? 'empty' : 'ready'}
+          refreshing={refreshing || filterPending}
+          skeleton={<TicketListSkeleton orgId={!!orgId} />}
+          error={error}
+          onRetry={handleRetry}
+          empty={{
+            icon: <LuTicket className="h-5 w-5" />,
+            title: search || typeFilter ? 'No matches' : 'No tickets yet',
+            description:
               search || typeFilter
-                ? 'No tickets match your search. Try adjusting the filters.'
-                : 'Create one to get started.'
-            }
-            action={
-              !search && !typeFilter ? (
+                ? 'No tickets match these filters. Try a different search or clear a filter.'
+                : 'There are no tickets yet. Create one to get started.',
+            action:
+              search || typeFilter ? (
+                <Button size="sm" variant="outline" onClick={clearFilters}>
+                  Clear all filters
+                </Button>
+              ) : (
                 <Button size="sm" onClick={onOpenCreate}>
                   <LuPlus className="h-4 w-4" />
                   New ticket
                 </Button>
-              ) : undefined
-            }
-          />
-        ) : (
+              ),
+          }}
+        >
           <div className="w-full overflow-x-auto px-2">
             <Table className={orgId ? 'min-w-[960px] table-fixed' : 'min-w-[820px] table-fixed'}>
               <TableHeader className="sticky top-0 z-10">
@@ -362,7 +380,7 @@ const TicketList = ({ tickets, loading, error, onRetry, onOpenCreate, onTicketDe
               </TableBody>
             </Table>
           </div>
-        )}
+        </ViewState>
       </div>
     </div>
   );

@@ -3,7 +3,9 @@ import { useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { LuCheckCircle, LuMail } from 'react-icons/lu';
 import Logo from '../components/logo';
-import { Button, Card, CardContent, CardHeader, Input, Spinner, Textarea } from '../components/ui';
+import { Button, Card, CardContent, CardHeader, Input, Textarea, ViewState } from '../components/ui';
+import { PublicFormSkeleton } from '../components/skeletons';
+import { friendlyError } from '../lib/error-message';
 import { getPublicForm } from '../actions/get-public-form';
 import { submitTicketForm } from '../actions/submit-ticket-form';
 
@@ -39,7 +41,8 @@ const PublicForm = () => {
 
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const [loadError, setLoadError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [values, setValues] = useState(EMPTY_VALUES);
   const [errors, setErrors] = useState({});
@@ -51,14 +54,17 @@ const PublicForm = () => {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    setLoadError('');
+    setLoadError(null);
 
     getPublicForm(publicId)
       .then((data) => {
         if (!cancelled) setForm(data);
       })
       .catch((err) => {
-        if (!cancelled) setLoadError(err.message || 'This form is no longer available.');
+        if (!cancelled) {
+          console.error(err);
+          setLoadError(err);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -67,7 +73,9 @@ const PublicForm = () => {
     return () => {
       cancelled = true;
     };
-  }, [publicId]);
+  }, [publicId, reloadKey]);
+
+  const handleRetry = () => setReloadKey((key) => key + 1);
 
   const handleChange = (field) => (event) => {
     const { value } = event.target;
@@ -98,7 +106,8 @@ const PublicForm = () => {
       });
       setResult(response);
     } catch (err) {
-      setSubmitError(err.message || 'Failed to submit your request. Please try again.');
+      console.error(err);
+      setSubmitError(friendlyError(err, 'Failed to submit your request. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -114,23 +123,6 @@ const PublicForm = () => {
       <p className="mt-6 text-xs text-muted-foreground">Powered by tickiit</p>
     </div>
   );
-
-  if (loading) {
-    return frame(<Spinner />);
-  }
-
-  if (loadError || !form) {
-    return frame(
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <h1 className="text-xl font-semibold text-foreground">Form unavailable</h1>
-          <p className="text-sm text-muted-foreground">
-            {loadError || 'This form is no longer available.'}
-          </p>
-        </CardHeader>
-      </Card>
-    );
-  }
 
   if (result) {
     return frame(
@@ -173,6 +165,12 @@ const PublicForm = () => {
   }
 
   return frame(
+    <ViewState
+      state={loading ? 'loading' : loadError || !form ? 'error' : 'ready'}
+      skeleton={<PublicFormSkeleton />}
+      error={loadError || { message: 'This form is no longer available.', code: 'MISSING' }}
+      onRetry={handleRetry}
+    >
     <Card className="w-full max-w-xl">
       <CardHeader className="space-y-1.5">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -250,7 +248,7 @@ const PublicForm = () => {
           )}
 
           <Button type="submit" className="w-full" loading={submitting}>
-            {submitting ? 'Submitting...' : 'Submit request'}
+            Submit request
           </Button>
           <p className="text-center text-xs text-muted-foreground">
             We only use your email address to reply to this request.
@@ -258,6 +256,7 @@ const PublicForm = () => {
         </form>
       </CardContent>
     </Card>
+    </ViewState>
   );
 };
 

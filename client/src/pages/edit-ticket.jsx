@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/react';
-import { LuTrash2, LuArrowLeft, LuAlertTriangle } from 'react-icons/lu';
+import { LuTrash2, LuArrowLeft } from 'react-icons/lu';
 import { getTicketById } from '../actions/get-ticket-by-id';
-import { Button, EmptyState, Spinner } from '../components/ui';
+import { TicketFormSkeleton } from '../components/skeletons';
+import { Button, ViewState } from '../components/ui';
 
 const EditTicket = () => {
   const { id } = useParams();
@@ -15,6 +16,7 @@ const EditTicket = () => {
   const [category, setCategory] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const fetchTicket = async () => {
@@ -24,18 +26,18 @@ const EditTicket = () => {
         const token = await getToken();
         const data = await getTicketById(id, token);
         setTicket(data);
-        setTitle(data.title || '');
-        setDescription(data.description || '');
-        setCategory(data.category || '');
+        setTitle(data?.title || '');
+        setDescription(data?.description || '');
+        setCategory(data?.category || '');
       } catch (err) {
         console.error('Failed to fetch ticket:', err);
-        setError(err.message || 'Failed to fetch ticket');
+        setError(err);
       } finally {
         setLoading(false);
       }
     };
     fetchTicket();
-  }, [id, getToken]);
+  }, [id, getToken, reloadKey]);
 
   const handleForm = (e) => {
     e.preventDefault();
@@ -48,48 +50,7 @@ const EditTicket = () => {
     navigate('/dashboard');
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6">
-        <Spinner />
-        <p className="text-sm text-muted-foreground">Loading ticket...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <EmptyState
-          icon={<LuAlertTriangle className="h-6 w-6" />}
-          title="Couldn't load this ticket"
-          description={`${error} It may have been removed or you may not have access to it.`}
-          action={
-            <Button variant="outline" onClick={() => navigate('/dashboard')}>
-              Back to dashboard
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
-
-  if (!ticket) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <EmptyState
-          icon={<LuTrash2 className="h-6 w-6" />}
-          title="Ticket not found"
-          description="This ticket doesn't exist or has been deleted."
-          action={
-            <Button variant="outline" onClick={() => navigate('/dashboard')}>
-              Back to dashboard
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
+  const handleRetry = () => setReloadKey((key) => key + 1);
 
   return (
     <section>
@@ -97,6 +58,22 @@ const EditTicket = () => {
         <LuArrowLeft className="h-5 w-5" />
       </Link>
       <div className="flex min-h-screen flex-col items-center justify-center p-6">
+        <ViewState
+          state={loading ? 'loading' : error ? 'error' : !ticket ? 'empty' : 'ready'}
+          skeleton={<TicketFormSkeleton />}
+          error={error}
+          onRetry={handleRetry}
+          empty={{
+            icon: <LuTrash2 className="h-6 w-6" />,
+            title: 'Ticket not found',
+            description: "This ticket doesn't exist or has been deleted.",
+            action: (
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                Back to dashboard
+              </Button>
+            ),
+          }}
+        >
         <form className="w-full max-w-md space-y-4" onSubmit={handleForm}>
           <div>
             <label htmlFor="title" className="mb-1.5 block text-sm font-medium text-foreground">Title</label>
@@ -140,6 +117,7 @@ const EditTicket = () => {
             </Button>
           </div>
         </form>
+        </ViewState>
       </div>
     </section>
   );

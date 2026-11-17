@@ -3,8 +3,17 @@ import { Link } from 'react-router-dom';
 import { UserButton } from '@clerk/react';
 import { LuMenu, LuX } from 'react-icons/lu';
 import Logo from '../logo';
-import { Button } from '../ui';
+import { Button, Spinner } from '../ui';
 import { GITHUB_URL } from './constants';
+
+const AccountControl = ({ loading }) =>
+  loading ? (
+    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-muted">
+      <Spinner className="h-4 w-4" label="Loading account menu" />
+    </span>
+  ) : (
+    <UserButton />
+  );
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -46,10 +55,10 @@ const Header = ({ isLoaded, isSignedIn, onSignIn, onPrimaryAction, onDashboard }
         <div className="hidden items-center gap-2.5 md:flex">
           {isSignedIn ? (
             <>
-              <Button variant="outline" onClick={onDashboard}>
+              <Button loading={!isLoaded} variant="outline" onClick={onDashboard}>
                 Dashboard
               </Button>
-              <UserButton />
+              <AccountControl loading={!isLoaded} />
             </>
           ) : (
             <>
@@ -98,10 +107,10 @@ const Header = ({ isLoaded, isSignedIn, onSignIn, onPrimaryAction, onDashboard }
             <div className="flex flex-col gap-2.5 border-t border-border pt-4">
               {isSignedIn ? (
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" onClick={onDashboard}>
+                  <Button loading={!isLoaded} variant="outline" onClick={onDashboard}>
                     Dashboard
                   </Button>
-                  <UserButton />
+                  <AccountControl loading={!isLoaded} />
                 </div>
               ) : (
                 <>

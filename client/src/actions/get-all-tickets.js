@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../lib/constants';
+import { errorCodeForStatus } from '../lib/error-message';
 
 export async function getAllTickets(token) {
   const response = await fetch(`${API_BASE_URL}/api/tickets`, {
@@ -9,7 +10,9 @@ export async function getAllTickets(token) {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch tickets');
+    const error = new Error('Failed to fetch tickets');
+    error.code = errorCodeForStatus(response.status);
+    throw error;
   }
 
   return response.json();

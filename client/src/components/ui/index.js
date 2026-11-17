@@ -11,4 +11,5 @@ export { default as Modal } from './modal';
 export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './table';
 export { default as Spinner } from './spinner';
 export { default as EmptyState } from './empty-state';
+export { default as ViewState } from './view-state';
 export {Tabs, TabsContent, TabsList, TabsTrigger} from './tabs'

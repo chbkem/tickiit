@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useOrganization } from '@clerk/react';
 import { LuArrowRight, LuFlame, LuGauge, LuInbox, LuPlus, LuTicket, LuUserX } from 'react-icons/lu';
-import { Button, EmptyState, Spinner } from '../components/ui';
+import { Button, ViewState } from '../components/ui';
+import { DashboardSkeleton } from '../components/skeletons';
 import { useTickets } from '../hooks/use-tickets';
 import { usePersonResolver } from '../lib/person-name';
 import { normalizeValue } from '../components/tickets/ticket-details/utils';
@@ -22,6 +23,16 @@ const Dashboard = () => {
   const { tickets, setTickets, loading, error, refetch } = useTickets();
   const { resolvePerson } = usePersonResolver();
   const [showCreate, setShowCreate] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRetry = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const isAdmin = orgRole === 'admin' || orgRole === 'org:admin' || orgRole === 'owner';
   const showUnassigned = !!orgId && isAdmin;
@@ -119,36 +130,26 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {loading ? (
-        <div className="flex flex-1 items-center justify-center py-24">
-          <Spinner />
-        </div>
-      ) : error ? (
-        <section className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-            <LuTicket className="h-5 w-5" />
-          </div>
-          <p className="text-sm font-semibold text-foreground">Could not load your tickets</p>
-          <p className="text-sm text-muted-foreground">{error.message || 'Something went wrong. Try again.'}</p>
-          <Button variant="outline" size="sm" onClick={refetch}>
-            Retry
-          </Button>
-        </section>
-      ) : allTickets.length === 0 ? (
-        <section className="flex flex-1 items-center justify-center rounded-lg border border-border bg-card shadow-sm">
-          <EmptyState
-            icon={<LuTicket className="h-6 w-6" />}
-            title="Welcome to your dashboard"
-            description="Your support tickets will appear here once you create them. Create your first ticket to start tracking."
-            action={
-              <Button className="mt-4" onClick={() => setShowCreate(true)}>
-                <LuPlus className="h-4 w-4" />
-                Create ticket
-              </Button>
-            }
-          />
-        </section>
-      ) : (
+      <ViewState
+        className="flex-1"
+        state={loading ? 'loading' : error ? 'error' : allTickets.length === 0 ? 'empty' : 'ready'}
+        refreshing={refreshing}
+        skeleton={<DashboardSkeleton />}
+        error={error}
+        onRetry={handleRetry}
+        empty={{
+          icon: <LuTicket className="h-6 w-6" />,
+          title: 'Welcome to your dashboard',
+          description:
+            'Your support tickets will appear here once you create them. Create your first ticket to start tracking.',
+          action: (
+            <Button className="mt-4" onClick={() => setShowCreate(true)}>
+              <LuPlus className="h-4 w-4" />
+              Create ticket
+            </Button>
+          ),
+        }}
+      >
         <>
           <section aria-label="Current ticket load">
             <div
@@ -211,7 +212,7 @@ const Dashboard = () => {
             resolvePerson={resolvePerson}
           />
         </>
-      )}
+      </ViewState>
 
       <CreateTicketModal
         open={showCreate}

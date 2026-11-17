@@ -1,4 +1,6 @@
+import { useId } from 'react';
 import { cn } from '../../lib/utils';
+import Spinner from './spinner';
 
 const buttonVariants = {
   variant: {
@@ -27,10 +29,14 @@ const Button = ({
   children,
   ...props
 }) => {
+  const labelId = useId();
+
   return (
     <button
       type={type}
       disabled={disabled || loading}
+      aria-busy={loading ? true : undefined}
+      aria-labelledby={loading ? labelId : undefined}
       className={cn(
         'inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
         buttonVariants.variant[variant],
@@ -39,10 +45,14 @@ const Button = ({
       )}
       {...props}
     >
-      {loading && (
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+      {loading ? (
+        <>
+          <Spinner className="h-4 w-4" />
+          <span id={labelId} className="sr-only">{children}</span>
+        </>
+      ) : (
+        children
       )}
-      {children}
     </button>
   );
 };

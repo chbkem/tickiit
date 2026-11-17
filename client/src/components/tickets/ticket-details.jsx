@@ -7,6 +7,7 @@ import { addComment } from '../../actions/add-comment';
 import { updateTicket } from '../../actions/update-ticket';
 import { deleteTicket } from '../../actions/delete-ticket';
 import { formatTicketDate } from '../../lib/format-date';
+import { friendlyError } from '../../lib/error-message';
 import { EmptyState, Tabs, TabsList, TabsTrigger, TabsContent } from '../ui';
 import { usePersonResolver } from '../../lib/person-name';
 import Header from './ticket-details/header';
@@ -105,7 +106,8 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
       onTicketUpdated?.(next);
       toast.success('Ticket updated');
     } catch (err) {
-      toast.error(err.message || 'Failed to update ticket');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to update ticket'));
     } finally {
       setSavingField(null);
     }
@@ -130,7 +132,8 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
       onTicketUpdated?.(next);
       toast.success('Ticket updated');
     } catch (err) {
-      toast.error(err.message || 'Failed to update ticket');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to update ticket'));
     } finally {
       setIsSavingDraft(false);
     }
@@ -148,7 +151,8 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
       setCommentBody('');
       toast.success('Comment added');
     } catch (err) {
-      toast.error(err.message || 'Failed to add comment');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to add comment'));
     } finally {
       setIsSubmittingComment(false);
     }
@@ -166,7 +170,8 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
       onClose?.();
       onTicketDeleted?.(ticket.id);
     } catch (err) {
-      toast.error(err.message || 'Failed to delete ticket');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to delete ticket'));
     } finally {
       setIsDeletingTicket(false);
     }

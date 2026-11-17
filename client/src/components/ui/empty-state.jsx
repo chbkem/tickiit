@@ -6,9 +6,10 @@ const EmptyState = ({
   description,
   action,
   className,
+  role,
 }) => {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-2 p-10 text-center', className)}>
+    <div role={role} className={cn('flex flex-col items-center justify-center gap-2 p-10 text-center', className)}>
       {icon && (
         <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
           {icon}

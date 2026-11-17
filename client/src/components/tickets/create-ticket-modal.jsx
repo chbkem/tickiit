@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { OrganizationSwitcher, useAuth } from '@clerk/react';
 import { createTicket } from '../../actions/create-ticket';
 import { PRIORITY_OPTIONS, TICKET_TYPE_OPTIONS } from '../../lib/constants';
+import { friendlyError } from '../../lib/error-message';
 import { Button, Input, Label, Select, Textarea } from '../ui';
 import Modal from '../ui/modal';
 
@@ -50,7 +51,7 @@ const CreateTicketModal = ({ open, onClose, onTicketCreated }) => {
         token
       );
       onTicketCreated(createdTicket);
-      toast.success('Ticket created successfully');
+      toast.success('Ticket created');
       setSubject('');
       setDescription('');
       setPriority('');
@@ -59,7 +60,8 @@ const CreateTicketModal = ({ open, onClose, onTicketCreated }) => {
       setErrors({});
       onClose();
     } catch (err) {
-      toast.error(err.message || 'Failed to create ticket');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to create ticket'));
     } finally {
       setIsSubmitting(false);
     }
@@ -151,8 +153,8 @@ const CreateTicketModal = ({ open, onClose, onTicketCreated }) => {
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Creating...' : 'Create ticket'}
+          <Button type="submit" loading={isSubmitting}>
+            Create ticket
           </Button>
         </div>
       </form>

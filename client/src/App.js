@@ -18,11 +18,7 @@ function App() {
         <Routes>
           <Route path='/' element={<Landing />} />
           <Route path='/f/:publicId' element={<PublicForm />} />
-          <Route path='/dashboard' element={
-            <Show when="signed-in">
-              <DashboardShell />
-            </Show>
-          }>
+          <Route path='/dashboard' element={<DashboardShell />}>
             <Route index element={<Dashboard />} />
             <Route path='create-ticket' element={<CreateTicket />} />
             <Route path='edit-ticket/:id' element={<EditTicket />} />

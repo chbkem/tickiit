@@ -20,7 +20,10 @@ import {
   EmptyState,
   Input,
   Spinner,
+  ViewState,
 } from '../components/ui';
+import { FormsSkeleton } from '../components/skeletons';
+import { friendlyError } from '../lib/error-message';
 import { createForm } from '../actions/create-form';
 import { deleteForm } from '../actions/delete-form';
 import { getAllForms } from '../actions/get-all-forms';
@@ -39,30 +42,36 @@ const Forms = () => {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isAdmin = ADMIN_ROLES.has(orgRole);
 
-  const loadForms = useCallback(async () => {
+  const loadForms = useCallback(async ({ refresh = false } = {}) => {
     if (!orgId || !isAdmin) {
       setForms([]);
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError('');
     try {
       const token = await getToken();
       setForms(await getAllForms(token));
     } catch (err) {
-      setError(err.message || 'Failed to fetch forms');
+      console.error(err);
+      setError(err);
     } finally {
-      setLoading(false);
+      if (refresh) setRefreshing(false);
+      else setLoading(false);
     }
   }, [getToken, isAdmin, orgId]);
 
   useEffect(() => {
     if (isLoaded) loadForms();
   }, [isLoaded, loadForms]);
+
+  const handleRetry = () => loadForms({ refresh: true });
 
   const handleCreate = async () => {
     setCreating(true);
@@ -73,12 +82,13 @@ const Forms = () => {
       const url = formUrl(created);
       try {
         await navigator.clipboard.writeText(url);
-        toast.success('Form created — link copied');
+        toast.success('Form created, link copied');
       } catch (_) {
         toast.success('Form created');
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to create form');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to create form'));
     } finally {
       setCreating(false);
     }
@@ -109,7 +119,8 @@ const Forms = () => {
       setForms((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       toast.success('Form renamed');
     } catch (err) {
-      toast.error(err.message || 'Failed to rename form');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to rename form'));
     } finally {
       setBusyId(null);
     }
@@ -123,7 +134,8 @@ const Forms = () => {
       setForms((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       toast.success(updated.isActive ? 'Form enabled' : 'Form disabled');
     } catch (err) {
-      toast.error(err.message || 'Failed to update form');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to update form'));
     } finally {
       setBusyId(null);
     }
@@ -138,7 +150,8 @@ const Forms = () => {
       setForms((prev) => prev.filter((item) => item.id !== form.id));
       toast.success('Form deleted');
     } catch (err) {
-      toast.error(err.message || 'Failed to delete form');
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to delete form'));
     } finally {
       setBusyId(null);
     }
@@ -173,42 +186,26 @@ const Forms = () => {
       );
     }
 
-    if (loading) {
-      return (
-        <div className="flex justify-center p-12">
-          <Spinner />
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="flex flex-col items-center gap-3 p-10 text-center">
-          <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" onClick={loadForms}>
-            Try again
-          </Button>
-        </div>
-      );
-    }
-
-    if (forms.length === 0) {
-      return (
-        <EmptyState
-          icon={<LuClipboardList className="h-6 w-6" />}
-          title="No forms yet"
-          description="Create a form, copy its link, and share it with your customers. Every submission becomes a ticket in this dashboard."
-          action={
+    return (
+      <ViewState
+        state={loading ? 'loading' : error ? 'error' : forms.length === 0 ? 'empty' : 'ready'}
+        refreshing={refreshing}
+        skeleton={<FormsSkeleton />}
+        error={error}
+        onRetry={handleRetry}
+        empty={{
+          icon: <LuClipboardList className="h-6 w-6" />,
+          title: 'No forms yet',
+          description:
+            'Create a form, copy its link, and share it with your customers. Every submission becomes a ticket in this dashboard.',
+          action: (
             <Button className="mt-4" onClick={handleCreate} loading={creating}>
               <LuPlus className="h-4 w-4" />
               Create form
             </Button>
-          }
-        />
-      );
-    }
-
-    return (
+          ),
+        }}
+      >
       <div className="grid gap-4 md:grid-cols-2">
         {forms.map((form) => {
           const busy = busyId === form.id;
@@ -258,7 +255,7 @@ const Forms = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleRename(form)}
-                      disabled={busy}
+                      loading={busy}
                       aria-label={`Rename ${form.name}`}
                     >
                       <LuPencil className="h-4 w-4" />
@@ -284,7 +281,7 @@ const Forms = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(form)}
-                      disabled={busy}
+                      loading={busy}
                       aria-label={`Delete ${form.name}`}
                       className="text-destructive hover:bg-destructive/10"
                     >
@@ -297,6 +294,7 @@ const Forms = () => {
           );
         })}
       </div>
+      </ViewState>
     );
   };
 
