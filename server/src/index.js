@@ -5,10 +5,12 @@ const helmet = require("helmet");
 const ticketsRouter = require("./routes/tickets");
 const formsRouter = require("./routes/forms");
 const publicFormsRouter = require("./routes/publicForms");
+const publicTicketsRouter = require("./routes/publicTickets");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 const { clerkMiddleware } = require("@clerk/express");
 const logger = require("./lib/logger");
 const { createLimiter } = require("./middleware/rateLimit");
+const { redactTokenInText } = require("./utils/tokenLog");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,7 +32,8 @@ const configureCors = () => {
   return cors({ origin: origins, credentials: true });
 };
 
-app.use(helmet());
+// A customer link token lives in the path. Never let it leave as a Referer.
+app.use(helmet({ referrerPolicy: { policy: "no-referrer" } }));
 app.use(configureCors());
 app.use(express.json({ limit: "16kb" }));
 
@@ -49,7 +52,7 @@ app.use((req, res, next) => {
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
     logger.http("HTTP request", {
       method: req.method,
-      path: req.originalUrl,
+      path: redactTokenInText(req.originalUrl),
       status: res.statusCode,
       durationMs: Math.round(durationMs * 10) / 10,
     });
@@ -64,6 +67,7 @@ app.get("/", (req, res) => {
 app.use("/api/tickets", ticketsRouter);
 app.use("/api/forms", formsRouter);
 app.use("/api/public/forms", publicFormsRouter);
+app.use("/api/public/tickets", publicTicketsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

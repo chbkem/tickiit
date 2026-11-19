@@ -4,10 +4,10 @@ const logger = require("../lib/logger");
 const formService = require("../services/formService");
 const ticketService = require("../services/ticketService");
 const emailService = require("../services/emailService");
+const { sendFreshCustomerLink } = require("../services/customerLinkMailer");
 const { resolveRequester } = require("../services/identity");
 const { isHoneypotFilled, isSubmittedTooFast } = require("../utils/formGuard");
-
-const DEFAULT_ORG_NAME = "our support team";
+const { DEFAULT_ORG_NAME } = require("../constants/organization");
 
 const serializePublicForm = (form) => ({
   publicId: form.publicId,
@@ -69,19 +69,32 @@ exports.submitPublicForm = asyncHandler(async (req, res) => {
     },
   });
 
+  const orgName = form.orgName ?? DEFAULT_ORG_NAME;
+  const linkResult = await sendFreshCustomerLink({
+    ticket,
+    to: email,
+    name,
+    orgName,
+  });
+
   let confirmationSent = false;
   try {
     confirmationSent = await emailService.sendTicketConfirmation({
       to: email,
       name,
       ticket,
-      orgName: form.orgName ?? DEFAULT_ORG_NAME,
+      orgName,
     });
   } catch (error) {
     logger.error("Failed to send ticket confirmation email", {
       ticketId: ticket.id,
       ticketNumber: ticket.ticketNumber,
       errorMessage: error.message,
+      errorName: error.name,
+      errorCode: error.code,
+      errorResponseCode: error.responseCode,
+      errorResponse: error.response,
+      errorStack: error.stack,
     });
   }
 
@@ -91,6 +104,7 @@ exports.submitPublicForm = asyncHandler(async (req, res) => {
     formId: form.id,
     orgId: form.orgId,
     confirmationSent,
+    linkSent: linkResult.sent,
   });
 
   res.status(201).json({

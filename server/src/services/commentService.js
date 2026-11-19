@@ -8,9 +8,9 @@ const listComments = (ticketId) =>
 
 const findCommentById = (id) => prisma.comment.findUnique({ where: { id } });
 
-const createComment = (ticketId, authorId, body) =>
+const createComment = (ticketId, authorId, body, visibility = "PUBLIC") =>
   prisma.comment.create({
-    data: { ticketId, authorId, body },
+    data: { ticketId, authorId, body, visibility },
   });
 
 const updateComment = (id, body) =>

@@ -28,6 +28,7 @@ model Ticket {
   dueAt          DateTime?
   source         String
   comments       Comment[]
+  accessTokens   TicketAccessToken[]
 
   @@index([requesterKey])
   @@index([orgId, assigneeId, status])
@@ -50,12 +51,32 @@ model TicketForm {
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  authorId  String
-  body      String
-  createdAt DateTime @default(now())
+  id         String            @id @default(uuid())
+  ticketId   String
+  ticket     Ticket            @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  body       String
+  visibility CommentVisibility @default(PUBLIC)
+  createdAt  DateTime          @default(now())
+}
+
+model TicketAccessToken {
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique
+  ticketId   String
+  ticket     Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+
+  @@index([ticketId, expiresAt])
+}
+
+enum CommentVisibility {
+  PUBLIC
+  INTERNAL
+  CUSTOMER
 }
 
 enum Status {

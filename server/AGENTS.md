@@ -16,16 +16,20 @@ The Express 5 API. It owns all authentication, the ticket lifecycle, comments, t
 | `src/middleware/errorHandler.js` | The single place a status code is chosen for a failure |
 | `src/utils/ApiError.js` | `new ApiError(statusCode, message, details)`, the only error class callers throw |
 | `src/utils/sanitize.js` | `sanitizeText`, which strips every HTML tag. The gate for anything user authored |
-| `src/utils/access.js` | `assertCanAccessTicket`, the personal ticket visibility rule |
+| `src/utils/access.js` | `assertCanAccessTicket` and `assertCanRevokeCustomerLinks`, the ticket and link authorization rules |
+| `src/utils/accessToken.js` | Customer link token generation, sha256 hashing, expiry checks and rate limit keys |
+| `src/utils/tokenLog.js` | Redaction that keeps raw customer link tokens out of request logs |
 | `src/utils/ticketNumber.js` | `#0001` style numbers, allocated under a Postgres advisory lock |
 | `src/services/clerkService.js` | Every Clerk call and the only place role checks live (`ADMIN_ROLES = admin, org:admin`) |
+| `src/services/customerTicketService.js` | Customer token lookup, filtered ticket view, replies, link issue and revocation |
+| `src/services/customerLinkMailer.js` | Link issue plus email delivery, with failures logged instead of failing the mutation |
 | `src/services/channelService.js` | Channel CRUD, Telegram connect and rotate as one shared function, `serializeChannel`, the webhook secret lookup, status stamping, the audit trail, and the decrypt sweep |
 | `src/services/telegramService.js` | The Telegram Bot API client. `getMe`, `getWebhookInfo`, `setWebhook`, `sendMessage`, each taking a token argument, five second timeout |
 | `src/utils/secretCrypto.js` | `encryptSecret` and `decryptSecret` (aes-256-gcm), `canDecryptSecret`, `randomSecret`, and the `CHANNEL_ENCRYPTION_KEY` reader |
 | `src/config/channels.js` | `CHANNEL_PUBLIC_BASE_URL` and the fixed webhook URL builder |
-| `src/routes/*.js` | Wiring only. No logic, no `prisma` |
-| `prisma/schema.prisma` | `Ticket`, `Comment`, `KnowledgeArticle`, `KnowledgeChunk`, `Channel`, `ChannelAudit`, `IngestionEvent` plus six enums. No `url` in the datasource |
-| `prisma/sql/*.sql` | Hand run SQL: enable the pgvector extension, build the HNSW index, backfill channel links |
+| `src/routes/*.js` | Wiring only. No logic, no `prisma`. The public ticket and staff link routes carry their own limiters |
+| `prisma/schema.prisma` | `Ticket`, `Comment`, `TicketAccessToken`, `KnowledgeArticle`, `KnowledgeChunk`, `Channel`, `ChannelAudit`, `IngestionEvent` plus seven enums. No `url` in the datasource |
+| `prisma/sql/*.sql` | Hand run SQL: enable the pgvector extension, build the HNSW index, backfill channel links, add customer link visibility and tokens |
 | `.env.example` | The most accurate env reference in the repo. More current than the root README |
 | `docs/scope/scope.md` | The feature status board. Read it first to learn what is done |
 

@@ -9,7 +9,7 @@ The React front end. A Create React App 5 app on React 18, with Clerk handling s
 | File | Owns |
 |---|---|
 | `src/index.js` | Mounts `ClerkProvider`, `App`, and the toast container |
-| `src/App.js` | The only route table. `/` is public, `/dashboard/*` sits inside `<Show when="signed-in">` |
+| `src/App.js` | The only route table. `/` and `/t/:token` are public, `/dashboard/*` sits inside `<Show when="signed-in">` |
 | `src/lib/constants.js` | `API_BASE_URL` and the option lists for status, priority, and type |
 | `src/lib/utils.js` | `cn()`, the clsx plus tailwind merge helper every component uses |
 | `src/components/ui/index.js` | The barrel for the hand rolled component kit |
@@ -18,8 +18,11 @@ The React front end. A Create React App 5 app on React 18, with Clerk handling s
 | `src/hooks/use-tickets.js` | The one ticket data hook. Holds the priority grouped response as it comes back, with a request key guard against out of order responses |
 | `src/hooks/use-knowledge-articles.js` | The knowledge base hook. Lists org articles and owns the upload state, same request key guard |
 | `src/hooks/use-channels.js` | The channels hook. Lists org channels, and owns connect, rotate, and test send alongside the CRUD calls |
+| `src/hooks/use-customer-ticket.js` | The public customer page hook. Loads one token scoped ticket and owns reply state |
 | `src/pages/settings.jsx` | Organization settings. Admin only, and its Knowledge base tab is the only section so far |
-| `src/actions/*.js` | One file per API call. The only files that call `fetch` |
+| `src/pages/customer-ticket.jsx` | The public customer page at `/t/:token`. Adds its no index tag and hides reply on closed tickets |
+| `src/actions/*.js` | One file per API call. The only files that call `fetch`. Customer calls live in `get-customer-ticket.js`, `post-customer-reply.js`, and `revoke-customer-links.js` |
+| `src/components/customer/*` | The customer ticket view, reply form and invalid link screen |
 | `src/components/landing/*` | The public marketing page, all of it static |
 
 ## Commands

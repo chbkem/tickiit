@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/react';
 import { LuTicket } from 'react-icons/lu';
 import { getTicketComments } from '../../actions/get-ticket-comments';
 import { addComment } from '../../actions/add-comment';
+import { revokeCustomerLinks } from '../../actions/revoke-customer-links';
 import { updateTicket } from '../../actions/update-ticket';
 import { deleteTicket } from '../../actions/delete-ticket';
 import { formatTicketDate } from '../../lib/format-date';
@@ -21,7 +22,9 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
   const [comments, setComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentBody, setCommentBody] = useState('');
+  const [commentVisibility, setCommentVisibility] = useState('PUBLIC');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isRevokingLinks, setIsRevokingLinks] = useState(false);
   const [savingField, setSavingField] = useState(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ subject: '', description: '' });
@@ -34,6 +37,9 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
 
   const isAdmin =
     !orgId || orgRole === 'admin' || orgRole === 'org:admin' || orgRole === 'owner';
+  const canRevokeLinks =
+    ticket?.assigneeId === userId ||
+    (Boolean(ticket?.orgId) && ['admin', 'org:admin', 'owner'].includes(orgRole));
 
   useEffect(() => {
     setDraft({ subject: ticket?.subject, description: ticket?.description });
@@ -146,7 +152,11 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
     setIsSubmittingComment(true);
     try {
       const token = await getToken();
-      const created = await addComment(ticket.id, { body }, token);
+      const created = await addComment(
+        ticket.id,
+        { body, visibility: commentVisibility },
+        token
+      );
       setComments((prev) => [...prev, created]);
       setCommentBody('');
       toast.success('Comment added');
@@ -155,6 +165,29 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
       toast.error(friendlyError(err, 'Failed to add comment'));
     } finally {
       setIsSubmittingComment(false);
+    }
+  };
+
+  const handleRevokeLinks = async () => {
+    if (!ticket) return;
+    const confirmed = window.confirm(
+      'Revoke all customer access links for this ticket? Anyone holding an old link will lose access immediately.'
+    );
+    if (!confirmed) return;
+    setIsRevokingLinks(true);
+    try {
+      const token = await getToken();
+      const result = await revokeCustomerLinks(ticket.id, token);
+      toast.success(
+        result?.revokedCount
+          ? `Revoked ${result.revokedCount} customer ${result.revokedCount === 1 ? 'link' : 'links'}`
+          : 'No active customer links to revoke'
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error(friendlyError(err, 'Failed to revoke customer links'));
+    } finally {
+      setIsRevokingLinks(false);
     }
   };
 
@@ -246,6 +279,11 @@ const TicketDetails = ({ ticket, onTicketUpdated, onTicketDeleted, onClose }) =>
                 onBodyChange={setCommentBody}
                 isSubmitting={isSubmittingComment}
                 onSubmit={handleAddComment}
+                visibility={commentVisibility}
+                onVisibilityChange={setCommentVisibility}
+                canRevoke={canRevokeLinks}
+                onRevokeLinks={handleRevokeLinks}
+                revoking={isRevokingLinks}
                 resolvePerson={resolvePerson}
                 userId={userId}
                 description={ticket.description}

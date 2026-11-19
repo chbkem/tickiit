@@ -13,7 +13,7 @@ let warnedOnce = false;
  * ONE place here before running multiple instances; we log a one-time warning
  * in production so the limitation is never silent.
  */
-const createLimiter = ({ windowMs, limit, message }) => {
+const createLimiter = ({ windowMs, limit, message, keyGenerator }) => {
   if (!warnedOnce && process.env.NODE_ENV === "production") {
     warnedOnce = true;
     logger.warn(
@@ -27,6 +27,7 @@ const createLimiter = ({ windowMs, limit, message }) => {
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message,
+    ...(keyGenerator ? { keyGenerator } : {}),
   });
 };
 

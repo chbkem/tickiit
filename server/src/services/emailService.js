@@ -76,8 +76,51 @@ const sendTicketConfirmation = async ({ to, name, ticket, orgName }) => {
   return true;
 };
 
+const buildCustomerLinkText = ({ name, ticket, orgName, url }) =>
+  [
+    `Hello ${safeHeaderValue(name)},`,
+    "",
+    `You can follow ticket ${safeHeaderValue(ticket.ticketNumber)} from ${safeHeaderValue(orgName)} online.`,
+    "",
+    "View the ticket and reply here:",
+    String(url || ""),
+    "",
+    "This link is private to you and works for 7 days.",
+    "",
+    `— ${safeHeaderValue(orgName)}`,
+  ].join("\n");
+
+/**
+ * sendCustomerAccessLink — emails the private customer link. Returns false
+ * when SMTP is not configured. Real send failures are thrown for the caller
+ * to log so the ticket and comment stay saved.
+ */
+const sendCustomerAccessLink = async ({ to, name, ticket, orgName, url }) => {
+  if (!isEmailConfigured()) {
+    logger.warn("SMTP is not configured; skipping customer access link email", {
+      ticketNumber: ticket.ticketNumber,
+    });
+    return false;
+  }
+
+  const fromName = safeHeaderValue(process.env.SMTP_FROM_NAME || orgName);
+
+  await getTransporter().sendMail({
+    from: process.env.SMTP_FROM_NAME
+      ? { name: fromName, address: process.env.SMTP_FROM }
+      : process.env.SMTP_FROM,
+    to,
+    subject: `[${safeHeaderValue(ticket.ticketNumber)}] View your support ticket`,
+    text: buildCustomerLinkText({ name, ticket, orgName, url }),
+  });
+
+  return true;
+};
+
 module.exports = {
   isEmailConfigured,
   buildConfirmationText,
   sendTicketConfirmation,
+  buildCustomerLinkText,
+  sendCustomerAccessLink,
 };

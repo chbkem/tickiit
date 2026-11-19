@@ -27,6 +27,7 @@ const createCommentSchema = z.object({
   }),
   body: z.object({
     body: commentText,
+    visibility: z.enum(["PUBLIC", "INTERNAL"]).default("PUBLIC"),
   }).strict(),
 });
 

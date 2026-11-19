@@ -171,91 +171,93 @@ const PublicForm = () => {
       error={loadError || { message: 'This form is no longer available.', code: 'MISSING' }}
       onRetry={handleRetry}
     >
-    <Card className="w-full max-w-xl">
-      <CardHeader className="space-y-1.5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {form.orgName}
-        </p>
-        <h1 className="text-2xl font-bold text-foreground">{form.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {form.description || 'Tell us what you need help with and our team will get back to you.'}
-        </p>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <Input
-            id="name"
-            label="Your name"
-            value={values.name}
-            onChange={handleChange('name')}
-            error={errors.name}
-            autoComplete="name"
-            maxLength={100}
-            required
-          />
-          <Input
-            id="email"
-            type="email"
-            label="Email address"
-            value={values.email}
-            onChange={handleChange('email')}
-            error={errors.email}
-            autoComplete="email"
-            maxLength={254}
-            required
-          />
-          <Input
-            id="subject"
-            label="Subject"
-            value={values.subject}
-            onChange={handleChange('subject')}
-            error={errors.subject}
-            maxLength={200}
-            placeholder="A short summary of the issue"
-            required
-          />
-          <Textarea
-            id="message"
-            label="Message"
-            value={values.message}
-            onChange={handleChange('message')}
-            error={errors.message}
-            rows={6}
-            maxLength={5000}
-            placeholder="Describe what happened, including any error messages or steps to reproduce."
-            required
-          />
-
-          <div
-            className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden"
-            aria-hidden="true"
-          >
-            <label htmlFor="website">Website</label>
-            <input
-              id="website"
-              name="website"
-              tabIndex={-1}
-              autoComplete="off"
-              value={website}
-              onChange={(event) => setWebsite(event.target.value)}
-            />
-          </div>
-
-          {submitError && (
-            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive" role="alert">
-              {submitError}
+      {form && (
+        <Card className="mx-auto w-full max-w-xl">
+          <CardHeader className="space-y-1.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {form.orgName}
             </p>
-          )}
+            <h1 className="text-2xl font-bold text-foreground">{form.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              {form.description || 'Tell us what you need help with and our team will get back to you.'}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <Input
+                id="name"
+                label="Your name"
+                value={values.name}
+                onChange={handleChange('name')}
+                error={errors.name}
+                autoComplete="name"
+                maxLength={100}
+                required
+              />
+              <Input
+                id="email"
+                type="email"
+                label="Email address"
+                value={values.email}
+                onChange={handleChange('email')}
+                error={errors.email}
+                autoComplete="email"
+                maxLength={254}
+                required
+              />
+              <Input
+                id="subject"
+                label="Subject"
+                value={values.subject}
+                onChange={handleChange('subject')}
+                error={errors.subject}
+                maxLength={200}
+                placeholder="A short summary of the issue"
+                required
+              />
+              <Textarea
+                id="message"
+                label="Message"
+                value={values.message}
+                onChange={handleChange('message')}
+                error={errors.message}
+                rows={6}
+                maxLength={5000}
+                placeholder="Describe what happened, including any error messages or steps to reproduce."
+                required
+              />
 
-          <Button type="submit" className="w-full" loading={submitting}>
-            Submit request
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            We only use your email address to reply to this request.
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+              <div
+                className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden"
+                aria-hidden="true"
+              >
+                <label htmlFor="website">Website</label>
+                <input
+                  id="website"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={website}
+                  onChange={(event) => setWebsite(event.target.value)}
+                />
+              </div>
+
+              {submitError && (
+                <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive" role="alert">
+                  {submitError}
+                </p>
+              )}
+
+              <Button type="submit" className="w-full" loading={submitting}>
+                Submit request
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                We only use your email address to reply to this request.
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </ViewState>
   );
 };

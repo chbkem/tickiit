@@ -7,6 +7,7 @@ import EditTicket from './pages/edit-ticket';
 import Tickets from './pages/tickets';
 import Forms from './pages/forms';
 import PublicForm from './pages/public-form';
+import CustomerTicket from './pages/customer-ticket';
 import Notifications from './pages/notifications';
 import Settings from './pages/settings';
 import DashboardShell from './components/dashboard/dashboard-shell';
@@ -18,6 +19,7 @@ function App() {
         <Routes>
           <Route path='/' element={<Landing />} />
           <Route path='/f/:publicId' element={<PublicForm />} />
+          <Route path='/t/:token' element={<CustomerTicket />} />
           <Route path='/dashboard' element={<DashboardShell />}>
             <Route index element={<Dashboard />} />
             <Route path='create-ticket' element={<CreateTicket />} />

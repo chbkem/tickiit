@@ -1,5 +1,5 @@
-import { LuCalendar, LuLoader, LuMessageSquare, LuSend } from 'react-icons/lu';
-import { Button, Textarea } from '../../ui';
+import { LuCalendar, LuLink2Off, LuLoader, LuMessageSquare, LuSend } from 'react-icons/lu';
+import { Badge, Button, Select, Textarea } from '../../ui';
 import { formatTicketDate } from '../../../lib/format-date';
 import Avatar from './avatar';
 
@@ -15,6 +15,11 @@ const CommentsSection = ({
   description,
   descriptionAuthorId,
   descriptionCreatedAt,
+  visibility,
+  onVisibilityChange,
+  canRevoke = false,
+  onRevokeLinks,
+  revoking = false,
 }) => {
   const getAuthor = (authorId) => {
     const resolved = resolvePerson(authorId) || authorId?.id || 'Unknown';
@@ -28,15 +33,43 @@ const CommentsSection = ({
 
   return (
     <section className="border-t border-border px-6 py-6">
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <LuMessageSquare className="h-4 w-4 text-muted-foreground" />
           Comments
         </h3>
-        <span className="text-xs text-muted-foreground">{totalCount} total</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">{totalCount} total</span>
+          {canRevoke && (
+            <Button
+              size="sm"
+              variant="outline"
+              loading={revoking}
+              onClick={onRevokeLinks}
+              title="Stop all customer access links for this ticket"
+            >
+              <LuLink2Off className="h-4 w-4" />
+              Revoke links
+            </Button>
+          )}
+        </div>
       </div>
 
-      
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+        <span className="text-xs font-medium text-muted-foreground">
+          Who can see your comment?
+        </span>
+        <Select
+          id="comment-visibility"
+          value={visibility}
+          onChange={(event) => onVisibilityChange(event.target.value)}
+          className="h-8 w-48 text-xs"
+          aria-label="Comment visibility"
+        >
+          <option value="PUBLIC">Public, visible to customer</option>
+          <option value="INTERNAL">Internal note</option>
+        </Select>
+      </div>
 
       <ul className="mt-5 space-y-4">
         {hasDescription && (
@@ -81,6 +114,9 @@ const CommentsSection = ({
                     <span className="text-sm font-medium text-foreground">
                       {authorName}
                     </span>
+                    {comment.visibility === 'INTERNAL' && (
+                      <Badge variant="muted">Internal</Badge>
+                    )}
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <LuCalendar className="h-3 w-3 shrink-0" />
                       {formatTicketDate(comment.createdAt)}

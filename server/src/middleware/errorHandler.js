@@ -1,6 +1,7 @@
 const { getAuth } = require("@clerk/express");
 const ApiError = require("../utils/ApiError");
 const logger = require("../lib/logger");
+const { redactRequestContext } = require("../utils/tokenLog");
 
 const PRISMA_ERROR_MESSAGES = {
   P2002: [409, "A record with the same unique value already exists."],
@@ -42,12 +43,12 @@ const collectRequestContext = (req) => {
 };
 
 const notFoundHandler = (req, res) => {
-  logger.warn("Route not found", collectRequestContext(req));
+  logger.warn("Route not found", redactRequestContext(collectRequestContext(req)));
   res.status(404).json({ error: "Not found." });
 };
 
 const errorHandler = (error, req, res, next) => {
-  const ctx = collectRequestContext(req);
+  const ctx = redactRequestContext(collectRequestContext(req));
 
   if (error instanceof ApiError) {
     logger.warn("API error", { ...ctx, statusCode: error.statusCode, errorMessage: error.message, details: error.details });

@@ -7,6 +7,8 @@ const ticketService = require("../services/ticketService");
 const commentService = require("../services/commentService");
 const { assertCanAccessTicket } = require("../utils/access");
 const { assertUserIsAdminInOrganization } = require("../services/clerkService");
+const customerTicketService = require("../services/customerTicketService");
+const { sendFreshCustomerLink } = require("../services/customerLinkMailer");
 
 const assertTicketByParam = async (ticketId) => {
   const ticket = await ticketService.findTicketById(ticketId, { include: false });
@@ -59,12 +61,23 @@ exports.createComment = asyncHandler(async (req, res) => {
   const ticket = await assertTicketByParam(req.params.ticketId);
   assertCanAccessTicket(ticket, { userId, orgId });
 
-  const comment = await commentService.createComment(ticket.id, userId, req.body.body);
+  const visibility = req.body.visibility || "PUBLIC";
+  const comment = await commentService.createComment(ticket.id, userId, req.body.body, visibility);
+
+  if (visibility === "PUBLIC" && ticket.requesterEmail) {
+    await sendFreshCustomerLink({
+      ticket,
+      to: ticket.requesterEmail,
+      name: ticket.requesterName,
+      orgName: await customerTicketService.resolveTicketOrgName(ticket),
+    });
+  }
 
   logger.info("Comment created", {
     commentId: comment.id,
     ticketId: ticket.id,
     actorId: userId,
+    visibility,
   });
 
   res.status(201).json(comment);

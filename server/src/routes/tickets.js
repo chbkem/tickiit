@@ -1,6 +1,7 @@
 const express = require("express");
 const ticketsController = require("../controllers/tickets");
 const ticketCommentsRouter = require("./ticketComments");
+const customerLinksRouter = require("./customerLinks");
 const validate = require("../middleware/validate");
 const requireAuth = require("../middleware/requireAuth");
 const { createLimiter } = require("../middleware/rateLimit");
@@ -27,5 +28,6 @@ router.patch("/:id", writeLimiter, validate(updateTicketSchema), ticketsControll
 router.delete("/:id", writeLimiter, validate(idParamSchema), ticketsController.deleteTicket);
 
 router.use("/:ticketId/comments", ticketCommentsRouter);
+router.use("/:ticketId/customer-links", customerLinksRouter);
 
 module.exports = router;
